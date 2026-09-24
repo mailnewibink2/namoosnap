@@ -385,8 +385,8 @@ export default function GuestUpload({ onNavigateToGallery }) {
         <div style={{ textAlign: 'center', marginBottom: '1.4rem' }}>
           <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '0.65rem' }}>
             <img 
-              src="/namoo-logo.png?v=3" 
-              alt="Namoo Snap - Wedding Photo Share"
+              src="/namoo-logo.png?v=4" 
+              alt="Namoo Snap - Digital Photo Booth"
               style={{
                 width: '135px',
                 height: 'auto',

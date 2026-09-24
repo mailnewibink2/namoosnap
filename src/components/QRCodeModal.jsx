@@ -109,22 +109,36 @@ export default function QRCodeModal({ isOpen, onClose, weddingInfo }) {
       drawCornerAccent(62, height - 62);
       drawCornerAccent(width - 62, height - 62);
 
-      // 4. Logo / Header Namoo Snap
-      ctx.fillStyle = '#2B3A28';
-      ctx.font = 'bold 36px "Playfair Display", Georgia, serif';
-      ctx.textAlign = 'center';
-      ctx.fillText('NAMOO SNAP', width / 2, 170);
+      // 4. Logo / Header Namoo Snap (Menggunakan Logo Gambar Digital Photo Booth)
+      const logoImg = new Image();
+      logoImg.crossOrigin = 'anonymous';
+      logoImg.src = '/namoo-logo.png?v=4';
+      await new Promise((resolve) => {
+        logoImg.onload = resolve;
+        logoImg.onerror = resolve;
+      });
 
-      ctx.fillStyle = '#C49A38';
-      ctx.font = '600 22px "Inter", sans-serif';
-      ctx.fillText('WEDDING LIVE PHOTOBOOTH', width / 2, 215);
+      if (logoImg.complete && logoImg.naturalWidth > 0) {
+        const logoTargetWidth = 260;
+        const logoTargetHeight = (logoImg.naturalHeight / logoImg.naturalWidth) * logoTargetWidth;
+        ctx.drawImage(logoImg, (width - logoTargetWidth) / 2, 65, logoTargetWidth, logoTargetHeight);
+      } else {
+        ctx.fillStyle = '#2B3A28';
+        ctx.font = 'bold 36px "Playfair Display", Georgia, serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('NAMOO SNAP', width / 2, 170);
+
+        ctx.fillStyle = '#C49A38';
+        ctx.font = '600 22px "Inter", sans-serif';
+        ctx.fillText('DIGITAL PHOTO BOOTH', width / 2, 215);
+      }
 
       // Garis Pembatas
       ctx.strokeStyle = '#C49A38';
       ctx.lineWidth = 1.5;
       ctx.beginPath();
-      ctx.moveTo(width / 2 - 120, 250);
-      ctx.lineTo(width / 2 + 120, 250);
+      ctx.moveTo(width / 2 - 120, 275);
+      ctx.lineTo(width / 2 + 120, 275);
       ctx.stroke();
 
       // 5. Nama Pengantin & Tanggal
@@ -384,9 +398,18 @@ export default function QRCodeModal({ isOpen, onClose, weddingInfo }) {
                   marginBottom: '1.2rem',
                 }}
               >
-                {/* Header Card */}
-                <div style={{ fontSize: '0.72rem', letterSpacing: '0.12em', color: '#C49A38', fontWeight: 700, textTransform: 'uppercase' }}>
-                  NAMOO SNAP PHOTOBOOTH
+                {/* Header Card dengan Logo Gambar */}
+                <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '0.45rem' }}>
+                  <img 
+                    src="/namoo-logo.png?v=4" 
+                    alt="Namoo Snap - Digital Photo Booth"
+                    style={{
+                      width: '95px',
+                      height: 'auto',
+                      objectFit: 'contain',
+                      display: 'block',
+                    }}
+                  />
                 </div>
                 
                 <h4
