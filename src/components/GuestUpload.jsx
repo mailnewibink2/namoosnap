@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { supabase, isSupabaseConfigured } from '../supabaseClient';
-import { getWeddingSettings } from '../utils/weddingSettings';
+import { getWeddingSettings, parseWeddingTitle } from '../utils/weddingSettings';
 import { composePhotoboothImage } from '../utils/photoCompositor';
 import confetti from 'canvas-confetti';
 import { 
@@ -410,18 +410,48 @@ export default function GuestUpload({ onNavigateToGallery }) {
             Abadikan momen hangat Anda bersama dan bagikan ke layar & Galery Namoo
           </h2>
 
-          {/* Subtitle Nama Pengantin yang sedang berlangsung */}
-          <div 
-            style={{
-              fontSize: '0.8rem',
-              color: '#C49A38',
-              fontWeight: 600,
-              marginTop: '0.4rem',
-              letterSpacing: '0.04em'
-            }}
-          >
-            ✨ {weddingInfo.title} • {weddingInfo.wedding_date}
-          </div>
+          {/* Subtitle Nama Pengantin yang sedang berlangsung (Format 3 Baris Rapi) */}
+          {(() => {
+            const { prefix, couple } = parseWeddingTitle(weddingInfo.title);
+            return (
+              <div style={{ marginTop: '0.65rem' }}>
+                <div 
+                  style={{
+                    fontSize: '0.78rem',
+                    fontFamily: 'var(--font-serif)',
+                    fontStyle: 'italic',
+                    color: '#768772',
+                    letterSpacing: '0.06em',
+                    lineHeight: 1.2,
+                  }}
+                >
+                  {prefix}
+                </div>
+                <div 
+                  style={{
+                    fontFamily: 'var(--font-serif)',
+                    fontSize: '1.45rem',
+                    fontWeight: 600,
+                    color: '#283625',
+                    lineHeight: 1.25,
+                    margin: '2px 0',
+                  }}
+                >
+                  {couple}
+                </div>
+                <div 
+                  style={{
+                    fontSize: '0.82rem',
+                    color: '#C49A38',
+                    fontWeight: 600,
+                    letterSpacing: '0.04em',
+                  }}
+                >
+                  {weddingInfo.wedding_date}
+                </div>
+              </div>
+            );
+          })()}
         </div>
 
         {/* Notifikasi Peringatan Kredensial jika belum diatur */}
@@ -548,24 +578,25 @@ export default function GuestUpload({ onNavigateToGallery }) {
               disabled={isUploading || isComposing}
             />
 
-            {/* KONTROL PILIHAN GRID & FILTER (COMPACT & TIDAK FULL WIDTH) */}
+            {/* KONTROL PILIHAN GRID & FILTER (SATU BARIS DI MOBILE & WEB) */}
             <div 
               style={{ 
                 display: 'flex', 
-                flexWrap: 'wrap', 
+                flexWrap: 'nowrap', 
                 alignItems: 'flex-start',
-                justifyContent: 'flex-start',
-                gap: '0.75rem 1.4rem', 
-                marginBottom: '1.2rem' 
+                justifyContent: 'space-between',
+                gap: '10px', 
+                marginBottom: '1.2rem',
+                width: '100%',
               }}
             >
               {/* 1. KONTROL PILIHAN GRID */}
-              <div>
+              <div style={{ flex: '1 1 45%', minWidth: '0' }}>
                 <div 
                   style={{ 
                     display: 'flex', 
                     alignItems: 'center', 
-                    gap: '6px',
+                    gap: '4px',
                     marginBottom: '0.3rem' 
                   }}
                 >
@@ -580,7 +611,7 @@ export default function GuestUpload({ onNavigateToGallery }) {
                     Grid
                   </span>
                   {totalSlotsNeeded > 1 && (
-                    <span style={{ fontSize: '0.72rem', color: '#C49A38', fontWeight: 600 }}>
+                    <span style={{ fontSize: '0.7rem', color: '#C49A38', fontWeight: 600 }}>
                       ({rawPhotos.filter(Boolean).length}/{totalSlotsNeeded})
                     </span>
                   )}
@@ -588,11 +619,12 @@ export default function GuestUpload({ onNavigateToGallery }) {
 
                 <div 
                   style={{
-                    display: 'inline-flex',
-                    gap: '3px',
+                    display: 'flex',
+                    gap: '2px',
                     backgroundColor: '#E6ECE4',
-                    padding: '3px',
-                    borderRadius: '8px'
+                    padding: '2.5px',
+                    borderRadius: '8px',
+                    width: '100%',
                   }}
                 >
                   {[
@@ -605,16 +637,19 @@ export default function GuestUpload({ onNavigateToGallery }) {
                       type="button"
                       onClick={() => handleLayoutChange(item.id)}
                       style={{
+                        flex: 1,
                         border: 'none',
                         borderRadius: '6px',
-                        padding: '0.24rem 0.6rem',
-                        fontSize: '0.76rem',
+                        padding: '0.24rem 0.25rem',
+                        fontSize: '0.72rem',
                         fontWeight: layout === item.id ? 700 : 500,
                         backgroundColor: layout === item.id ? '#2E3E2B' : 'transparent',
                         color: layout === item.id ? '#ffffff' : '#455243',
                         cursor: 'pointer',
                         transition: 'all 0.2s ease',
-                        boxShadow: layout === item.id ? '0 1px 4px rgba(43,58,40,0.2)' : 'none'
+                        boxShadow: layout === item.id ? '0 1px 4px rgba(43,58,40,0.2)' : 'none',
+                        whiteSpace: 'nowrap',
+                        textAlign: 'center',
                       }}
                     >
                       {item.label}
@@ -624,7 +659,7 @@ export default function GuestUpload({ onNavigateToGallery }) {
               </div>
 
               {/* 2. PILIHAN FILTER (NORMAL, BW, CLASSIC) */}
-              <div>
+              <div style={{ flex: '1 1 55%', minWidth: '0' }}>
                 <div 
                   style={{ 
                     fontSize: '0.86rem', 
@@ -639,11 +674,12 @@ export default function GuestUpload({ onNavigateToGallery }) {
 
                 <div 
                   style={{
-                    display: 'inline-flex',
-                    gap: '3px',
+                    display: 'flex',
+                    gap: '2px',
                     backgroundColor: '#E6ECE4',
-                    padding: '3px',
-                    borderRadius: '8px'
+                    padding: '2.5px',
+                    borderRadius: '8px',
+                    width: '100%',
                   }}
                 >
                   {[
@@ -656,16 +692,19 @@ export default function GuestUpload({ onNavigateToGallery }) {
                       type="button"
                       onClick={() => handleFilterChange(f.id)}
                       style={{
+                        flex: 1,
                         border: 'none',
                         borderRadius: '6px',
-                        padding: '0.24rem 0.6rem',
-                        fontSize: '0.76rem',
+                        padding: '0.24rem 0.25rem',
+                        fontSize: '0.72rem',
                         fontWeight: filter === f.id ? 700 : 500,
                         backgroundColor: filter === f.id ? '#2E3E2B' : 'transparent',
                         color: filter === f.id ? '#ffffff' : '#455243',
                         cursor: 'pointer',
                         transition: 'all 0.2s ease',
-                        boxShadow: filter === f.id ? '0 1px 4px rgba(43,58,40,0.2)' : 'none'
+                        boxShadow: filter === f.id ? '0 1px 4px rgba(43,58,40,0.2)' : 'none',
+                        whiteSpace: 'nowrap',
+                        textAlign: 'center',
                       }}
                     >
                       {f.label}

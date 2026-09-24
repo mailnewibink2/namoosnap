@@ -80,3 +80,26 @@ export async function saveWeddingSettings(newSettings) {
 
   return payload;
 }
+
+export function parseWeddingTitle(title) {
+  if (!title) return { prefix: 'The Wedding of', couple: 'Sarah & Dimas' };
+  const str = title.trim();
+  const lower = str.toLowerCase();
+
+  if (lower.startsWith('the wedding of ')) {
+    return {
+      prefix: 'The Wedding of',
+      couple: str.slice(15).trim(),
+    };
+  }
+  if (lower.startsWith('wedding of ')) {
+    return {
+      prefix: 'The Wedding of',
+      couple: str.slice(11).trim(),
+    };
+  }
+  return {
+    prefix: 'The Wedding of',
+    couple: str,
+  };
+}

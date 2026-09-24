@@ -1,4 +1,5 @@
 // Utilitas untuk menggabungkan 1, 2, atau 4 foto dengan layout grid, filter, dan wedding watermark frame terintegrasi
+import { parseWeddingTitle } from './weddingSettings';
 
 function drawWrappedText(ctx, text, x, y, maxWidth, lineHeight, maxLines = 2) {
   if (!text) return;
@@ -67,7 +68,7 @@ export async function composePhotoboothImage({
   const CANVAS_WIDTH = 1080;
   const PADDING = 44;
   const GAP = 28;
-  const FOOTER_HEIGHT = 220; // Ruang proporsional untuk nama pengantin, tanggal, nama tamu, dan ucapan
+  const FOOTER_HEIGHT = 240; // Ruang proporsional untuk nama tamu, ucapan, dan format 3-baris wedding
 
   let canvasHeight = 1080;
 
@@ -170,65 +171,114 @@ export async function composePhotoboothImage({
     ctx.stroke();
   });
 
-  // 3. Render Footer Frame (Wedding Watermark + Nama Tamu & Doa/Ucapan)
+  // 3. Render Footer Frame
+  // Sesuai permintaan user:
+  // Format di foto: Nama Tamu & Ucapan di atas, lalu di bawahnya:
+  // (Baris 1) The Wedding of
+  // (Baris 2) Rahma & Febi
+  // (Baris 3) Tanggal Acara
   const footerTop = canvasHeight - PADDING - FOOTER_HEIGHT;
   const centerX = CANVAS_WIDTH / 2;
 
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
 
-  // --- BAGIAN A: ACARA PERNIKAHAN & TANGGAL ---
-  ctx.fillStyle = '#283625'; // Deep forest green
-  ctx.font = 'bold 31px "Playfair Display", Georgia, serif';
-  ctx.fillText(weddingInfo.title || 'The Wedding of Sarah & Dimas', centerX, footerTop + 30);
-
-  ctx.fillStyle = '#C49A38'; // Gold accent
-  ctx.font = '600 18px "Inter", "Plus Jakarta Sans", sans-serif';
-  ctx.fillText(weddingInfo.wedding_date || '24 September 2026', centerX, footerTop + 62);
-
-  // Garis Pembatas Halus dengan Ornamen Tengah
-  ctx.strokeStyle = 'rgba(196, 154, 56, 0.35)';
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  ctx.moveTo(centerX - 170, footerTop + 86);
-  ctx.lineTo(centerX - 18, footerTop + 86);
-  ctx.moveTo(centerX + 18, footerTop + 86);
-  ctx.lineTo(centerX + 170, footerTop + 86);
-  ctx.stroke();
-
-  ctx.fillStyle = '#C49A38';
-  ctx.font = '14px serif';
-  ctx.fillText('❦', centerX, footerTop + 86);
-
-  // --- BAGIAN B: NAMA TAMU & UCAPAN DOA TERPADU ---
   const cleanName = guestName.trim();
   const cleanMessage = message.trim();
+  const { prefix, couple } = parseWeddingTitle(weddingInfo.title);
 
-  if (cleanName && cleanMessage) {
-    // Ada Nama Tamu & Ada Pesan Ucapan
-    ctx.fillStyle = '#2B3A28';
-    ctx.font = 'bold 25px "Playfair Display", Georgia, serif';
-    ctx.fillText(`Dari: ${cleanName}`, centerX, footerTop + 118);
+  if (cleanName || cleanMessage) {
+    // === SKENARIO 1: NAMA TAMU & UCAPAN ADA DI ATAS ===
+    if (cleanName && cleanMessage) {
+      // Ada Nama Tamu & Ucapan
+      ctx.fillStyle = '#2B3A28';
+      ctx.font = 'bold 26px "Playfair Display", Georgia, serif';
+      ctx.fillText(`Dari: ${cleanName}`, centerX, footerTop + 26);
 
-    ctx.fillStyle = '#556353';
-    ctx.font = 'italic 20px "Playfair Display", Georgia, serif';
-    drawWrappedText(ctx, `"${cleanMessage}"`, centerX, footerTop + 154, 940, 26, 2);
-  } else if (cleanName) {
-    // Hanya ada Nama Tamu
-    ctx.fillStyle = '#2B3A28';
-    ctx.font = 'bold 27px "Playfair Display", Georgia, serif';
-    ctx.fillText(`Dari: ${cleanName}`, centerX, footerTop + 132);
+      ctx.fillStyle = '#556353';
+      ctx.font = 'italic 20px "Playfair Display", Georgia, serif';
+      drawWrappedText(ctx, `"${cleanMessage}"`, centerX, footerTop + 58, 920, 26, 2);
+    } else if (cleanName) {
+      // Hanya ada Nama Tamu
+      ctx.fillStyle = '#2B3A28';
+      ctx.font = 'bold 28px "Playfair Display", Georgia, serif';
+      ctx.fillText(`Dari: ${cleanName}`, centerX, footerTop + 42);
+    } else {
+      // Hanya ada Ucapan
+      ctx.fillStyle = '#556353';
+      ctx.font = 'italic 22px "Playfair Display", Georgia, serif';
+      drawWrappedText(ctx, `"${cleanMessage}"`, centerX, footerTop + 42, 920, 26, 2);
+    }
+
+    // Garis Pembatas Halus dengan Ornamen Tengah
+    const dividerY = footerTop + 98;
+    ctx.strokeStyle = 'rgba(196, 154, 56, 0.35)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(centerX - 170, dividerY);
+    ctx.lineTo(centerX - 18, dividerY);
+    ctx.moveTo(centerX + 18, dividerY);
+    ctx.lineTo(centerX + 170, dividerY);
+    ctx.stroke();
+
+    ctx.fillStyle = '#C49A38';
+    ctx.font = '13px serif';
+    ctx.fillText('❦', centerX, dividerY);
+
+    // === FORMAT 3 BARIS DI BAWAH NAMA DAN UCAPAN ===
+    // Baris 1: The Wedding of
+    ctx.fillStyle = '#768772';
+    ctx.font = 'italic 19px "Playfair Display", Georgia, serif';
+    ctx.fillText(prefix, centerX, footerTop + 126);
+
+    // Baris 2: Nama Pengantin (Besar & Elegan)
+    ctx.fillStyle = '#283625';
+    ctx.font = 'bold 31px "Playfair Display", Georgia, serif';
+    ctx.fillText(couple, centerX, footerTop + 158);
+
+    // Baris 3: Tanggal Pernikahan
+    ctx.fillStyle = '#C49A38';
+    ctx.font = '600 17px "Inter", "Plus Jakarta Sans", sans-serif';
+    ctx.fillText(weddingInfo.wedding_date || '', centerX, footerTop + 192);
+
   } else {
-    // Belum mengisi nama (placeholder elegan saat sedang mengambil foto)
+    // === SKENARIO 2: BELUM DIISI NAMA (STATE SAAT BARU AMBIL FOTO) ===
+    // Tampilkan format 3-baris wedding di tengah dengan elegan
+    ctx.fillStyle = '#768772';
+    ctx.font = 'italic 20px "Playfair Display", Georgia, serif';
+    ctx.fillText(prefix, centerX, footerTop + 46);
+
+    ctx.fillStyle = '#283625';
+    ctx.font = 'bold 34px "Playfair Display", Georgia, serif';
+    ctx.fillText(couple, centerX, footerTop + 84);
+
+    ctx.fillStyle = '#C49A38';
+    ctx.font = '600 18px "Inter", "Plus Jakarta Sans", sans-serif';
+    ctx.fillText(weddingInfo.wedding_date || '', centerX, footerTop + 122);
+
+    const dividerY = footerTop + 152;
+    ctx.strokeStyle = 'rgba(196, 154, 56, 0.35)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(centerX - 160, dividerY);
+    ctx.lineTo(centerX - 18, dividerY);
+    ctx.moveTo(centerX + 18, dividerY);
+    ctx.lineTo(centerX + 160, dividerY);
+    ctx.stroke();
+
+    ctx.fillStyle = '#C49A38';
+    ctx.font = '13px serif';
+    ctx.fillText('❦', centerX, dividerY);
+
     ctx.fillStyle = '#899986';
-    ctx.font = 'italic 18px "Playfair Display", Georgia, serif';
-    ctx.fillText('Abadikan Momen Hangat & Penuh Kebahagiaan', centerX, footerTop + 130);
+    ctx.font = 'italic 17px "Playfair Display", Georgia, serif';
+    ctx.fillText('Abadikan Momen Hangat & Penuh Kebahagiaan', centerX, footerTop + 182);
   }
 
   // Branding kecil Namoo Snap di paling bawah
   ctx.fillStyle = '#A2B3A0';
-  ctx.font = '600 12px "Inter", "Plus Jakarta Sans", sans-serif';
-  ctx.fillText('NAMOO SNAP • DIGITAL PHOTOBOOTH', centerX, canvasHeight - 20);
+  ctx.font = '600 11px "Inter", "Plus Jakarta Sans", sans-serif';
+  ctx.fillText('NAMOO SNAP • DIGITAL PHOTOBOOTH', centerX, canvasHeight - 16);
 
   return new Promise((resolve, reject) => {
     canvas.toBlob(
