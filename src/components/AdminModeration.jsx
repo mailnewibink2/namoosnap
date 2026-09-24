@@ -15,6 +15,8 @@ import {
   Image as ImageIcon
 } from 'lucide-react';
 
+import { getWeddingSettings, saveWeddingSettings } from '../utils/weddingSettings';
+
 export default function AdminModeration() {
   const [photos, setPhotos] = useState([]);
   const [filter, setFilter] = useState('pending'); // 'all', 'pending', 'approved'
@@ -23,6 +25,31 @@ export default function AdminModeration() {
   const [actionLoadingId, setActionLoadingId] = useState(null);
   const [selectedPhoto, setSelectedPhoto] = useState(null);
   const [notification, setNotification] = useState({ text: '', type: '' });
+  
+  // Pengaturan Nama Pengantin & Tanggal Acara
+  const [weddingInfo, setWeddingInfo] = useState({ title: '', wedding_date: '' });
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [isSavingSettings, setIsSavingSettings] = useState(false);
+
+  useEffect(() => {
+    getWeddingSettings().then((res) => {
+      if (res) setWeddingInfo(res);
+    });
+  }, []);
+
+  const handleSaveSettings = async (e) => {
+    e.preventDefault();
+    try {
+      setIsSavingSettings(true);
+      await saveWeddingSettings(weddingInfo);
+      setShowSettingsModal(false);
+      showToast('Pengaturan nama pengantin & tanggal berhasil disimpan!');
+    } catch (err) {
+      showToast('Gagal menyimpan pengaturan: ' + err.message, 'error');
+    } finally {
+      setIsSavingSettings(false);
+    }
+  };
 
   // 1. Ambil semua data foto dari Supabase
   const fetchAllPhotos = useCallback(async () => {
@@ -252,8 +279,17 @@ export default function AdminModeration() {
           </p>
         </div>
 
-        {/* Action Button: Refresh & Approve All */}
-        <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center' }}>
+        {/* Action Button: Settings, Refresh & Approve All */}
+        <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap' }}>
+          <button 
+            onClick={() => setShowSettingsModal(true)} 
+            className="btn-secondary"
+            style={{ borderColor: 'var(--color-gold-400)', color: 'var(--color-sage-800)' }}
+            title="Atur Nama Pengantin & Tanggal"
+          >
+            💍 Atur Nama Wedding
+          </button>
+
           <button 
             onClick={fetchAllPhotos} 
             className="btn-secondary"
@@ -626,6 +662,151 @@ export default function AdminModeration() {
                 )}
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Pengaturan Pengantin & Tanggal Pernikahan */}
+      {showSettingsModal && (
+        <div 
+          style={{
+            position: 'fixed',
+            inset: 0,
+            backgroundColor: 'rgba(20, 26, 19, 0.65)',
+            backdropFilter: 'blur(6px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '1rem',
+            zIndex: 1000,
+          }}
+          onClick={() => setShowSettingsModal(false)}
+        >
+          <div 
+            style={{
+              backgroundColor: '#FAF9F5',
+              borderRadius: '16px',
+              border: '1px solid #9fb39e',
+              boxShadow: '0 16px 40px rgba(0, 0, 0, 0.25)',
+              maxWidth: '440px',
+              width: '100%',
+              padding: '2rem 1.6rem',
+              position: 'relative',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              onClick={() => setShowSettingsModal(false)}
+              style={{
+                position: 'absolute',
+                top: '14px',
+                right: '14px',
+                background: 'none',
+                border: 'none',
+                color: '#606C5D',
+                cursor: 'pointer',
+              }}
+            >
+              <X size={20} />
+            </button>
+
+            <h3 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.6rem', color: '#2B3A28', margin: '0 0 0.4rem 0' }}>
+              💍 Atur Nama Pengantin
+            </h3>
+            <p style={{ color: '#606C5D', fontSize: '0.86rem', margin: '0 0 1.4rem 0', lineHeight: 1.4 }}>
+              Teks ini akan otomatis tercetak sebagai watermark / tanda kenangan di setiap foto tamu.
+            </p>
+
+            <form onSubmit={handleSaveSettings}>
+              <div style={{ marginBottom: '1.2rem' }}>
+                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: '#2B3A28', marginBottom: '0.35rem' }}>
+                  Judul Acara / Nama Pengantin:
+                </label>
+                <input 
+                  type="text"
+                  placeholder="Contoh: The Wedding of Sarah & Dimas"
+                  value={weddingInfo.title}
+                  onChange={(e) => setWeddingInfo({ ...weddingInfo, title: e.target.value })}
+                  required
+                  style={{
+                    width: '100%',
+                    backgroundColor: '#E6ECE4',
+                    border: '1.5px solid #9FB39E',
+                    borderRadius: '8px',
+                    padding: '0.75rem 1rem',
+                    fontSize: '0.92rem',
+                    color: '#2B3A28',
+                    outline: 'none',
+                    boxSizing: 'border-box'
+                  }}
+                />
+              </div>
+
+              <div style={{ marginBottom: '1.4rem' }}>
+                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: '#2B3A28', marginBottom: '0.35rem' }}>
+                  Tanggal Acara:
+                </label>
+                <input 
+                  type="text"
+                  placeholder="Contoh: 24 September 2026"
+                  value={weddingInfo.wedding_date}
+                  onChange={(e) => setWeddingInfo({ ...weddingInfo, wedding_date: e.target.value })}
+                  required
+                  style={{
+                    width: '100%',
+                    backgroundColor: '#E6ECE4',
+                    border: '1.5px solid #9FB39E',
+                    borderRadius: '8px',
+                    padding: '0.75rem 1rem',
+                    fontSize: '0.92rem',
+                    color: '#2B3A28',
+                    outline: 'none',
+                    boxSizing: 'border-box'
+                  }}
+                />
+              </div>
+
+              {/* Live Preview Box */}
+              <div 
+                style={{
+                  backgroundColor: '#ffffff',
+                  border: '1.5px dashed #9fb39e',
+                  borderRadius: '10px',
+                  padding: '1rem',
+                  textAlign: 'center',
+                  marginBottom: '1.4rem'
+                }}
+              >
+                <div style={{ fontSize: '0.72rem', color: '#C49A38', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+                  Pratinjau Watermark Foto:
+                </div>
+                <div style={{ fontFamily: 'var(--font-serif)', fontSize: '1.2rem', fontWeight: 700, color: '#2B3A28', marginTop: '4px' }}>
+                  {weddingInfo.title || 'The Wedding of Sarah & Dimas'}
+                </div>
+                <div style={{ fontSize: '0.78rem', color: '#6E7C6C', marginTop: '2px' }}>
+                  {weddingInfo.wedding_date || '24 September 2026'}
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', gap: '0.6rem' }}>
+                <button
+                  type="button"
+                  onClick={() => setShowSettingsModal(false)}
+                  className="btn-secondary"
+                  style={{ flex: 1 }}
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSavingSettings}
+                  className="btn-primary"
+                  style={{ flex: 1.5 }}
+                >
+                  {isSavingSettings ? 'Menyimpan...' : 'Simpan Pengaturan'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

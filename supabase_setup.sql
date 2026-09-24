@@ -91,3 +91,29 @@ CREATE POLICY "Anyone can delete photos from wedding-photos"
 ON storage.objects FOR DELETE 
 TO public 
 USING (bucket_id = 'wedding-photos');
+
+-- 5. Tabel wedding_settings (Untuk Nama Pengantin & Tanggal yang diatur oleh Kru WO)
+CREATE TABLE IF NOT EXISTS public.wedding_settings (
+    id TEXT PRIMARY KEY DEFAULT 'current',
+    title TEXT DEFAULT 'The Wedding of Sarah & Dimas',
+    wedding_date TEXT DEFAULT '24 September 2026',
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE public.wedding_settings ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Public can read wedding_settings" ON public.wedding_settings;
+DROP POLICY IF EXISTS "Public can insert wedding_settings" ON public.wedding_settings;
+DROP POLICY IF EXISTS "Public can update wedding_settings" ON public.wedding_settings;
+
+CREATE POLICY "Public can read wedding_settings" 
+ON public.wedding_settings FOR SELECT TO public USING (true);
+
+CREATE POLICY "Public can insert wedding_settings" 
+ON public.wedding_settings FOR INSERT TO public WITH CHECK (true);
+
+CREATE POLICY "Public can update wedding_settings" 
+ON public.wedding_settings FOR UPDATE TO public USING (true) WITH CHECK (true);
+
+INSERT INTO public.wedding_settings (id, title, wedding_date)
+VALUES ('current', 'The Wedding of Sarah & Dimas', '24 September 2026')
+ON CONFLICT (id) DO NOTHING;

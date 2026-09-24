@@ -1,5 +1,7 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { supabase, isSupabaseConfigured } from '../supabaseClient';
+import { getWeddingSettings } from '../utils/weddingSettings';
+import { composePhotoboothImage } from '../utils/photoCompositor';
 import confetti from 'canvas-confetti';
 import { 
   CheckCircle2, 
@@ -8,18 +10,34 @@ import {
   X, 
   Loader2,
   RefreshCw,
-  FileCheck
+  Download,
+  UploadCloud,
+  Sparkles,
+  Camera,
+  Image as ImageIcon
 } from 'lucide-react';
 
 export default function GuestUpload({ onNavigateToGallery }) {
   const [guestName, setGuestName] = useState('');
   const [message, setMessage] = useState('');
-  const [originalFile, setOriginalFile] = useState(null);
-  const [compressedBlob, setCompressedBlob] = useState(null);
-  const [previewUrl, setPreviewUrl] = useState('');
-  const [compressionInfo, setCompressionInfo] = useState(null);
   
-  const [isCompressing, setIsCompressing] = useState(false);
+  // Pengaturan Layout Grid & Filter
+  const [layout, setLayout] = useState('1'); // '1' | '2' | '4'
+  const [filter, setFilter] = useState('normal'); // 'normal' | 'bw' | 'classic'
+  const [rawPhotos, setRawPhotos] = useState([]); // Array of { file, previewUrl }
+  const [activeSlot, setActiveSlot] = useState(0);
+
+  // Hasil Photobooth Tergabung (Composed Image)
+  const [composedBlob, setComposedBlob] = useState(null);
+  const [composedUrl, setComposedUrl] = useState('');
+  const [isComposing, setIsComposing] = useState(false);
+
+  // Wedding Settings (Judul & Tanggal)
+  const [weddingInfo, setWeddingInfo] = useState({
+    title: 'The Wedding of Sarah & Dimas',
+    wedding_date: '24 September 2026',
+  });
+
   const [isUploading, setIsUploading] = useState(false);
   const [statusMessage, setStatusMessage] = useState({ type: '', text: '' });
   const [isSubmitted, setIsSubmitted] = useState(false);
@@ -27,123 +45,130 @@ export default function GuestUpload({ onNavigateToGallery }) {
   const fileInputCameraRef = useRef(null);
   const fileInputGalleryRef = useRef(null);
 
-  // Kompresi Gambar menggunakan Canvas API (Maks 1200px, Kualitas 0.8)
-  const compressImage = (file) => {
-    return new Promise((resolve, reject) => {
-      const MAX_WIDTH = 1200;
-      const QUALITY = 0.8;
-
-      const reader = new FileReader();
-      reader.readAsDataURL(file);
-
-      reader.onload = (event) => {
-        const img = new Image();
-        img.src = event.target.result;
-
-        img.onload = () => {
-          let targetWidth = img.width;
-          let targetHeight = img.height;
-
-          if (targetWidth > MAX_WIDTH) {
-            targetHeight = Math.round((targetHeight * MAX_WIDTH) / targetWidth);
-            targetWidth = MAX_WIDTH;
-          }
-
-          const canvas = document.createElement('canvas');
-          canvas.width = targetWidth;
-          canvas.height = targetHeight;
-
-          const ctx = canvas.getContext('2d');
-          ctx.imageSmoothingEnabled = true;
-          ctx.imageSmoothingQuality = 'high';
-          ctx.drawImage(img, 0, 0, targetWidth, targetHeight);
-
-          canvas.toBlob(
-            (blob) => {
-              if (!blob) {
-                reject(new Error('Gagal mengompres gambar'));
-                return;
-              }
-
-              const originalSizeKB = (file.size / 1024).toFixed(1);
-              const compressedSizeKB = (blob.size / 1024).toFixed(1);
-              const savedPercent = Math.round(((file.size - blob.size) / file.size) * 100);
-
-              resolve({
-                blob,
-                previewUrl: URL.createObjectURL(blob),
-                width: targetWidth,
-                height: targetHeight,
-                originalSizeKB,
-                compressedSizeKB,
-                savedPercent: savedPercent > 0 ? savedPercent : 0,
-              });
-            },
-            'image/jpeg',
-            QUALITY
-          );
-        };
-
-        img.onerror = () => reject(new Error('Gagal memproses file gambar'));
-      };
-
-      reader.onerror = () => reject(new Error('Gagal membaca file gambar'));
+  // Muat pengaturan nama pengantin & tanggal
+  useEffect(() => {
+    getWeddingSettings().then((info) => {
+      if (info) setWeddingInfo(info);
     });
-  };
+  }, []);
 
-  const handleFileChange = async (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  const totalSlotsNeeded = parseInt(layout, 10);
 
-    if (!file.type.startsWith('image/')) {
-      setStatusMessage({
-        type: 'error',
-        text: 'Harap pilih file gambar (JPG, PNG, WebP).',
-      });
-      return;
-    }
+  // Jalankan komposisi kanvas setiap kali foto, layout, atau filter berubah
+  const triggerComposition = useCallback(async (photosList, selectedLayout, selectedFilter, info) => {
+    const slotsCount = parseInt(selectedLayout, 10);
+    if (photosList.length < slotsCount) return;
 
     try {
-      setIsCompressing(true);
-      setStatusMessage({ type: '', text: '' });
-      setOriginalFile(file);
-
-      const result = await compressImage(file);
-      setCompressedBlob(result.blob);
-      setPreviewUrl(result.previewUrl);
-      setCompressionInfo({
-        originalSizeKB: result.originalSizeKB,
-        compressedSizeKB: result.compressedSizeKB,
-        savedPercent: result.savedPercent,
-        dimensions: `${result.width} × ${result.height}px`,
+      setIsComposing(true);
+      const imagesToCompose = photosList.slice(0, slotsCount).map((p) => p.previewUrl);
+      const result = await composePhotoboothImage({
+        images: imagesToCompose,
+        layout: selectedLayout,
+        filter: selectedFilter,
+        weddingInfo: info,
       });
+
+      setComposedBlob(result.blob);
+      setComposedUrl(result.dataUrl);
     } catch (err) {
-      console.error('Error saat kompresi:', err);
-      setStatusMessage({
-        type: 'error',
-        text: 'Terjadi kesalahan saat memproses gambar.',
-      });
+      console.error('Error saat membuat komposisi photobooth:', err);
     } finally {
-      setIsCompressing(false);
+      setIsComposing(false);
     }
-  };
+  }, []);
 
-  const handleRemovePhoto = (e) => {
-    if (e) e.stopPropagation();
-    setOriginalFile(null);
-    setCompressedBlob(null);
-    if (previewUrl) URL.revokeObjectURL(previewUrl);
-    setPreviewUrl('');
-    setCompressionInfo(null);
+  // Tangani saat foto diambil dari kamera / galeri
+  const handleFileChange = async (e) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+
+    const newPhotos = [...rawPhotos];
+
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      if (!file.type.startsWith('image/')) continue;
+
+      const targetIdx = files.length > 1 ? i : activeSlot;
+      const previewUrl = URL.createObjectURL(file);
+
+      if (targetIdx < totalSlotsNeeded) {
+        newPhotos[targetIdx] = { file, previewUrl };
+      }
+    }
+
+    setRawPhotos(newPhotos);
+
+    // Otomatis pindah ke slot berikutnya jika belum penuh
+    const nextSlot = newPhotos.findIndex((p, idx) => !p && idx < totalSlotsNeeded);
+    if (nextSlot !== -1) {
+      setActiveSlot(nextSlot);
+    } else {
+      setActiveSlot(0);
+      triggerComposition(newPhotos, layout, filter, weddingInfo);
+    }
+
     if (fileInputCameraRef.current) fileInputCameraRef.current.value = '';
     if (fileInputGalleryRef.current) fileInputGalleryRef.current.value = '';
   };
 
+  // Ubah layout grid (1, 2, atau 4 foto)
+  const handleLayoutChange = (newLayout) => {
+    setLayout(newLayout);
+    setActiveSlot(0);
+    const slotsCount = parseInt(newLayout, 10);
+
+    // Jika foto yang ada sudah memenuhi slot baru, langsung recompose
+    if (rawPhotos.filter(Boolean).length >= slotsCount) {
+      triggerComposition(rawPhotos, newLayout, filter, weddingInfo);
+    } else {
+      setComposedBlob(null);
+      setComposedUrl('');
+    }
+  };
+
+  // Ubah filter (Normal, BW, Classic)
+  const handleFilterChange = (newFilter) => {
+    setFilter(newFilter);
+    if (rawPhotos.filter(Boolean).length >= totalSlotsNeeded) {
+      triggerComposition(rawPhotos, layout, newFilter, weddingInfo);
+    }
+  };
+
+  // Reset semua foto
+  const handleResetPhotos = () => {
+    rawPhotos.forEach((p) => p?.previewUrl && URL.revokeObjectURL(p.previewUrl));
+    if (composedUrl) URL.revokeObjectURL(composedUrl);
+    setRawPhotos([]);
+    setComposedBlob(null);
+    setComposedUrl('');
+    setActiveSlot(0);
+  };
+
+  // Unduh hasil foto ke perangkat tamu
+  const handleDownload = () => {
+    if (!composedUrl) return;
+    const link = document.createElement('a');
+    link.href = composedUrl;
+    link.download = `namoo-snap-${weddingInfo.title.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase()}-${Date.now()}.jpg`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    confetti({
+      particleCount: 50,
+      spread: 60,
+      origin: { y: 0.8 },
+      colors: ['#4F634C', '#dfb76c', '#FAF9F5'],
+    });
+  };
+
+  // Unggah foto ke Supabase Storage & Database
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!compressedBlob) {
-      setStatusMessage({ type: 'error', text: 'Silakan ambil atau pilih foto terlebih dahulu.' });
+    if (!composedBlob) {
+      setStatusMessage({ type: 'error', text: 'Silakan ambil foto hingga slot terpenuhi terlebih dahulu.' });
       return;
     }
 
@@ -172,7 +197,7 @@ export default function GuestUpload({ onNavigateToGallery }) {
 
       const { error: storageError } = await supabase.storage
         .from('wedding-photos')
-        .upload(filePath, compressedBlob, {
+        .upload(filePath, composedBlob, {
           contentType: 'image/jpeg',
           cacheControl: '3600',
           upsert: false,
@@ -210,8 +235,8 @@ export default function GuestUpload({ onNavigateToGallery }) {
       setIsSubmitted(true);
 
       confetti({
-        particleCount: 90,
-        spread: 75,
+        particleCount: 100,
+        spread: 80,
         origin: { y: 0.6 },
         colors: ['#4F634C', '#dfb76c', '#FAF9F5', '#2E3E2B', '#ffffff'],
       });
@@ -228,11 +253,13 @@ export default function GuestUpload({ onNavigateToGallery }) {
   };
 
   const handleUploadAnother = () => {
-    handleRemovePhoto();
+    handleResetPhotos();
     setMessage('');
     setIsSubmitted(false);
     setStatusMessage({ type: '', text: '' });
   };
+
+  const isPhotosComplete = rawPhotos.filter(Boolean).length >= totalSlotsNeeded;
 
   return (
     <div 
@@ -269,16 +296,15 @@ export default function GuestUpload({ onNavigateToGallery }) {
       <div style={{ width: '100%', maxWidth: '420px', position: 'relative', zIndex: 1 }}>
         
         {/* ======================================================== */}
-        {/* LOGO & HEADER SESUAI GAMBAR                              */}
+        {/* LOGO & HEADER                                            */}
         {/* ======================================================== */}
-        <div style={{ textAlign: 'center', marginBottom: '1.6rem' }}>
-          {/* Logo Gambar Kustom */}
-          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '0.85rem' }}>
+        <div style={{ textAlign: 'center', marginBottom: '1.4rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '0.65rem' }}>
             <img 
               src="/namoo-logo.png" 
               alt="Namoo Snap - Wedding Photo Share"
               style={{
-                width: '138px',
+                width: '135px',
                 height: 'auto',
                 objectFit: 'contain',
                 display: 'block',
@@ -286,11 +312,10 @@ export default function GuestUpload({ onNavigateToGallery }) {
             />
           </div>
 
-          {/* Subtitle / Headline */}
           <h2 
             style={{ 
               fontFamily: 'var(--font-serif)', 
-              fontSize: '1.28rem', 
+              fontSize: '1.25rem', 
               fontWeight: 400,
               color: '#344231',
               lineHeight: 1.45,
@@ -300,6 +325,19 @@ export default function GuestUpload({ onNavigateToGallery }) {
           >
             Abadikan momen hangat Anda bersama dan bagikan ke layar & Galery Namoo
           </h2>
+
+          {/* Subtitle Nama Pengantin yang sedang berlangsung */}
+          <div 
+            style={{
+              fontSize: '0.8rem',
+              color: '#C49A38',
+              fontWeight: 600,
+              marginTop: '0.4rem',
+              letterSpacing: '0.04em'
+            }}
+          >
+            ✨ {weddingInfo.title} • {weddingInfo.wedding_date}
+          </div>
         </div>
 
         {/* Notifikasi Peringatan Kredensial jika belum diatur */}
@@ -344,7 +382,9 @@ export default function GuestUpload({ onNavigateToGallery }) {
           </div>
         )}
 
-        {/* TAMPILAN JIKA FOTO SUDAH BERHASIL DIKIRIM */}
+        {/* ======================================================== */}
+        {/* TAMPILAN JIKA FOTO SUDAH BERHASIL DIKIRIM                */}
+        {/* ======================================================== */}
         {isSubmitted ? (
           <div 
             style={{
@@ -398,7 +438,9 @@ export default function GuestUpload({ onNavigateToGallery }) {
             </button>
           </div>
         ) : (
-          /* FORM UPLOAD SESUAI MOCKUP GAMBAR USER */
+          /* ======================================================== */
+          /* FORM UTAMA DENGAN PILIHAN GRID, FILTER & DOWNLOAD        */
+          /* ======================================================== */
           <form onSubmit={handleSubmit}>
             
             {/* Input File Tersembunyi */}
@@ -409,213 +451,400 @@ export default function GuestUpload({ onNavigateToGallery }) {
               capture="environment"
               onChange={handleFileChange}
               style={{ display: 'none' }}
-              disabled={isUploading || isCompressing}
+              disabled={isUploading || isComposing}
             />
 
             <input 
               ref={fileInputGalleryRef}
               type="file"
               accept="image/*"
+              multiple={totalSlotsNeeded > 1}
               onChange={handleFileChange}
               style={{ display: 'none' }}
-              disabled={isUploading || isCompressing}
+              disabled={isUploading || isComposing}
             />
 
-            {/* 1. HERO AMBIL FOTO: LINGKARAN KAMERA BESAR + PILIH DARI GALERI */}
-            <div 
-              style={{
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'center',
-                marginTop: '0.5rem',
-                marginBottom: '1.8rem',
-                position: 'relative'
-              }}
-            >
-              {/* Tombol Kamera Lingkaran Utama */}
+            {/* 1. KONTROL PILIHAN GRID (1 FOTO, 2 FOTO, 4 FOTO) */}
+            <div style={{ marginBottom: '1.2rem' }}>
               <div 
-                style={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  cursor: isCompressing || isUploading ? 'not-allowed' : 'pointer',
-                  userSelect: 'none'
-                }}
-                onClick={() => {
-                  if (!isCompressing && !isUploading) {
-                    fileInputCameraRef.current?.click();
-                  }
+                style={{ 
+                  display: 'flex', 
+                  justifyContent: 'space-between', 
+                  alignItems: 'center', 
+                  marginBottom: '0.45rem' 
                 }}
               >
-                {/* Outer Ring Circle */}
-                <div 
-                  style={{
-                    width: '185px',
-                    height: '185px',
-                    borderRadius: '50%',
-                    border: '2.5px solid #2B3A28',
-                    padding: '6px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    backgroundColor: '#FAF9F5',
-                    boxShadow: '0 4px 16px rgba(43, 58, 40, 0.1)',
-                    transition: 'transform 0.2s ease',
-                    position: 'relative'
-                  }}
-                  onMouseOver={(e) => (e.currentTarget.style.transform = 'scale(1.02)')}
-                  onMouseOut={(e) => (e.currentTarget.style.transform = 'scale(1)')}
-                >
-                  {/* Inner Solid Forest Circle */}
-                  <div 
-                    style={{
-                      width: '100%',
-                      height: '100%',
-                      borderRadius: '50%',
-                      backgroundColor: '#2E3E2B',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      overflow: 'hidden',
-                      position: 'relative'
-                    }}
-                  >
-                    {isCompressing ? (
-                      <Loader2 size={46} color="#ffffff" className="animate-spin" />
-                    ) : previewUrl ? (
-                      /* Foto yang sudah dipilih */
-                      <>
-                        <img 
-                          src={previewUrl} 
-                          alt="Preview Foto" 
-                          style={{
-                            width: '100%',
-                            height: '100%',
-                            objectFit: 'cover'
-                          }}
-                        />
-                        <div 
-                          style={{
-                            position: 'absolute',
-                            inset: 0,
-                            backgroundColor: 'rgba(0,0,0,0.35)',
-                            display: 'flex',
-                            flexDirection: 'column',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            color: '#fff',
-                            fontSize: '0.75rem',
-                            fontWeight: 600
-                          }}
-                        >
-                          <RefreshCw size={22} style={{ marginBottom: '4px' }} />
-                          Ganti
-                        </div>
-                      </>
-                    ) : (
-                      /* Ikon Kamera Putih Bersih sesuai Gambar */
-                      <svg width="86" height="72" viewBox="0 0 100 84" fill="none">
-                        <path d="M38 10 H62 L67 20 H33 L38 10Z" fill="#ffffff" />
-                        <rect x="10" y="20" width="80" height="54" rx="10" fill="#ffffff" />
-                        <circle cx="50" cy="47" r="19" fill="#2E3E2B" />
-                        <circle cx="50" cy="47" r="13" fill="#ffffff" />
-                        <circle cx="50" cy="47" r="8" fill="#2E3E2B" />
-                      </svg>
-                    )}
-                  </div>
-
-                  {/* Tombol Hapus Foto jika sudah dipilih */}
-                  {previewUrl && (
-                    <button
-                      type="button"
-                      onClick={handleRemovePhoto}
-                      style={{
-                        position: 'absolute',
-                        top: '4px',
-                        right: '4px',
-                        backgroundColor: '#dc2626',
-                        color: '#fff',
-                        border: 'none',
-                        width: '28px',
-                        height: '28px',
-                        borderRadius: '50%',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        cursor: 'pointer',
-                        boxShadow: '0 2px 6px rgba(0,0,0,0.3)',
-                        zIndex: 10
-                      }}
-                      title="Hapus foto ini"
-                    >
-                      <X size={15} />
-                    </button>
-                  )}
-                </div>
-
-                {/* Teks Label "Ambil Foto" */}
-                <span 
-                  style={{
-                    fontFamily: 'var(--font-serif)',
-                    fontSize: '1.25rem',
-                    color: '#2B3A28',
-                    marginTop: '0.65rem',
-                    fontWeight: 500,
-                    letterSpacing: '0.01em'
-                  }}
-                >
-                  Ambil Foto
+                <span style={{ fontSize: '0.82rem', fontWeight: 600, color: '#384336', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                  Pilih Format Grid:
                 </span>
+                {totalSlotsNeeded > 1 && (
+                  <span style={{ fontSize: '0.76rem', color: '#C49A38', fontWeight: 600 }}>
+                    Slot {rawPhotos.filter(Boolean).length} / {totalSlotsNeeded}
+                  </span>
+                )}
               </div>
 
-              {/* Tombol "Pilih dari Galeri" di Samping Kiri Bawah Sesuai Gambar */}
               <div 
                 style={{
-                  alignSelf: 'flex-start',
-                  marginTop: '-1.4rem',
-                  marginLeft: '0.5rem',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  cursor: isCompressing || isUploading ? 'not-allowed' : 'pointer'
-                }}
-                onClick={() => {
-                  if (!isCompressing && !isUploading) {
-                    fileInputGalleryRef.current?.click();
-                  }
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(3, 1fr)',
+                  gap: '6px',
+                  backgroundColor: '#E6ECE4',
+                  padding: '4px',
+                  borderRadius: '10px'
                 }}
               >
-                <div 
-                  style={{
-                    width: '38px',
-                    height: '38px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    color: '#2B3A28'
-                  }}
-                >
-                  <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#2B3A28" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
-                    <rect x="3" y="3" width="18" height="18" rx="3" />
-                    <circle cx="8.5" cy="8.5" r="1.5" />
-                    <path d="M21 15l-5-5L5 21" />
-                  </svg>
-                </div>
-                <span 
-                  style={{ 
-                    fontSize: '0.78rem', 
-                    color: '#2B3A28', 
-                    fontWeight: 500,
-                    marginTop: '2px'
-                  }}
-                >
-                  Pilih dari Galeri
-                </span>
+                {[
+                  { id: '1', label: '1 Foto' },
+                  { id: '2', label: '2 Foto' },
+                  { id: '4', label: '4 Foto' },
+                ].map((item) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => handleLayoutChange(item.id)}
+                    style={{
+                      border: 'none',
+                      borderRadius: '8px',
+                      padding: '0.45rem 0',
+                      fontSize: '0.82rem',
+                      fontWeight: layout === item.id ? 700 : 500,
+                      backgroundColor: layout === item.id ? '#2E3E2B' : 'transparent',
+                      color: layout === item.id ? '#ffffff' : '#455243',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease',
+                      boxShadow: layout === item.id ? '0 2px 6px rgba(43,58,40,0.2)' : 'none'
+                    }}
+                  >
+                    {item.label}
+                  </button>
+                ))}
               </div>
             </div>
 
-            {/* 2. FORM INPUT NAMA TAMU / SAHABAT */}
+            {/* 2. PILIHAN FILTER (NORMAL, BW, CLASSIC) */}
+            <div style={{ marginBottom: '1.4rem' }}>
+              <div style={{ fontSize: '0.82rem', fontWeight: 600, color: '#384336', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '0.45rem' }}>
+                Pilih Efek Filter:
+              </div>
+
+              <div 
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(3, 1fr)',
+                  gap: '6px',
+                  backgroundColor: '#E6ECE4',
+                  padding: '4px',
+                  borderRadius: '10px'
+                }}
+              >
+                {[
+                  { id: 'normal', label: 'Normal' },
+                  { id: 'bw', label: 'B & W' },
+                  { id: 'classic', label: 'Classic' },
+                ].map((f) => (
+                  <button
+                    key={f.id}
+                    type="button"
+                    onClick={() => handleFilterChange(f.id)}
+                    style={{
+                      border: 'none',
+                      borderRadius: '8px',
+                      padding: '0.45rem 0',
+                      fontSize: '0.82rem',
+                      fontWeight: filter === f.id ? 700 : 500,
+                      backgroundColor: filter === f.id ? '#2E3E2B' : 'transparent',
+                      color: filter === f.id ? '#ffffff' : '#455243',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease',
+                      boxShadow: filter === f.id ? '0 2px 6px rgba(43,58,40,0.2)' : 'none'
+                    }}
+                  >
+                    {f.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* 3. HERO COMPONENT: AMBIL FOTO / PRATINJAU KANVAS HASIL */}
+            {!isPhotosComplete ? (
+              /* BELUM SEMUA SLOT TERISI: TAMPILKAN TOMBOL KAMERA SESUAI MOCKUP */
+              <div 
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  marginTop: '0.2rem',
+                  marginBottom: '1.6rem',
+                  position: 'relative'
+                }}
+              >
+                {/* Tombol Kamera Lingkaran Besar */}
+                <div 
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    cursor: isComposing || isUploading ? 'not-allowed' : 'pointer',
+                    userSelect: 'none'
+                  }}
+                  onClick={() => {
+                    if (!isComposing && !isUploading) {
+                      fileInputCameraRef.current?.click();
+                    }
+                  }}
+                >
+                  <div 
+                    style={{
+                      width: '185px',
+                      height: '185px',
+                      borderRadius: '50%',
+                      border: '2.5px solid #2B3A28',
+                      padding: '6px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      backgroundColor: '#FAF9F5',
+                      boxShadow: '0 4px 16px rgba(43, 58, 40, 0.1)',
+                      transition: 'transform 0.2s ease',
+                      position: 'relative'
+                    }}
+                    onMouseOver={(e) => (e.currentTarget.style.transform = 'scale(1.02)')}
+                    onMouseOut={(e) => (e.currentTarget.style.transform = 'scale(1)')}
+                  >
+                    <div 
+                      style={{
+                        width: '100%',
+                        height: '100%',
+                        borderRadius: '50%',
+                        backgroundColor: '#2E3E2B',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        overflow: 'hidden',
+                        position: 'relative'
+                      }}
+                    >
+                      {isComposing ? (
+                        <Loader2 size={46} color="#ffffff" className="animate-spin" />
+                      ) : (
+                        <svg width="86" height="72" viewBox="0 0 100 84" fill="none">
+                          <path d="M38 10 H62 L67 20 H33 L38 10Z" fill="#ffffff" />
+                          <rect x="10" y="20" width="80" height="54" rx="10" fill="#ffffff" />
+                          <circle cx="50" cy="47" r="19" fill="#2E3E2B" />
+                          <circle cx="50" cy="47" r="13" fill="#ffffff" />
+                          <circle cx="50" cy="47" r="8" fill="#2E3E2B" />
+                        </svg>
+                      )}
+                    </div>
+                  </div>
+
+                  <span 
+                    style={{
+                      fontFamily: 'var(--font-serif)',
+                      fontSize: '1.25rem',
+                      color: '#2B3A28',
+                      marginTop: '0.65rem',
+                      fontWeight: 500,
+                      letterSpacing: '0.01em'
+                    }}
+                  >
+                    {totalSlotsNeeded > 1 
+                      ? `Ambil Foto ke-${activeSlot + 1} (${rawPhotos.filter(Boolean).length}/${totalSlotsNeeded})`
+                      : 'Ambil Foto'}
+                  </span>
+                </div>
+
+                {/* Tombol "Pilih dari Galeri" di Samping Kiri Bawah Sesuai Gambar */}
+                <div 
+                  style={{
+                    alignSelf: 'flex-start',
+                    marginTop: '-1.4rem',
+                    marginLeft: '0.5rem',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    cursor: isComposing || isUploading ? 'not-allowed' : 'pointer'
+                  }}
+                  onClick={() => {
+                    if (!isComposing && !isUploading) {
+                      fileInputGalleryRef.current?.click();
+                    }
+                  }}
+                >
+                  <div 
+                    style={{
+                      width: '38px',
+                      height: '38px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: '#2B3A28'
+                    }}
+                  >
+                    <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#2B3A28" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+                      <rect x="3" y="3" width="18" height="18" rx="3" />
+                      <circle cx="8.5" cy="8.5" r="1.5" />
+                      <path d="M21 15l-5-5L5 21" />
+                    </svg>
+                  </div>
+                  <span 
+                    style={{ 
+                      fontSize: '0.78rem', 
+                      color: '#2B3A28', 
+                      fontWeight: 500,
+                      marginTop: '2px'
+                    }}
+                  >
+                    Pilih dari Galeri
+                  </span>
+                </div>
+
+                {/* Indikator Slot Thumbnail jika Grid > 1 */}
+                {totalSlotsNeeded > 1 && (
+                  <div style={{ display: 'flex', gap: '8px', marginTop: '1rem' }}>
+                    {Array.from({ length: totalSlotsNeeded }).map((_, idx) => (
+                      <div 
+                        key={idx}
+                        onClick={() => setActiveSlot(idx)}
+                        style={{
+                          width: '42px',
+                          height: '42px',
+                          borderRadius: '8px',
+                          border: activeSlot === idx ? '2.5px solid #C49A38' : '1.5px dashed #9FB39E',
+                          backgroundColor: rawPhotos[idx] ? '#ffffff' : '#E6ECE4',
+                          overflow: 'hidden',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          position: 'relative'
+                        }}
+                      >
+                        {rawPhotos[idx] ? (
+                          <img 
+                            src={rawPhotos[idx].previewUrl} 
+                            alt="" 
+                            style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                          />
+                        ) : (
+                          <span style={{ fontSize: '0.74rem', color: '#687765', fontWeight: 600 }}>
+                            {idx + 1}
+                          </span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ) : (
+              /* FOTO LENGKAP: TAMPILKAN HASIL PHOTOBOOTH DENGAN FRAME & WATERMARK PENGANTIN */
+              <div style={{ marginBottom: '1.6rem' }}>
+                <div 
+                  style={{
+                    backgroundColor: '#FAF8F4',
+                    borderRadius: '14px',
+                    border: '1.5px solid #d8e0d6',
+                    padding: '8px',
+                    boxShadow: '0 8px 24px rgba(43, 58, 40, 0.12)',
+                    position: 'relative',
+                    overflow: 'hidden'
+                  }}
+                >
+                  {isComposing ? (
+                    <div style={{ height: '320px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <Loader2 size={36} color="#4F634C" className="animate-spin" />
+                    </div>
+                  ) : (
+                    <img 
+                      src={composedUrl} 
+                      alt="Hasil Photobooth"
+                      style={{
+                        width: '100%',
+                        borderRadius: '8px',
+                        display: 'block',
+                      }}
+                    />
+                  )}
+
+                  {/* Tombol Reset / Foto Ulang */}
+                  <button
+                    type="button"
+                    onClick={handleResetPhotos}
+                    style={{
+                      position: 'absolute',
+                      top: '14px',
+                      right: '14px',
+                      backgroundColor: 'rgba(220, 38, 38, 0.85)',
+                      color: '#ffffff',
+                      border: 'none',
+                      borderRadius: '50%',
+                      width: '30px',
+                      height: '30px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      cursor: 'pointer',
+                      backdropFilter: 'blur(4px)'
+                    }}
+                    title="Foto Ulang"
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
+
+                {/* Tombol Aksi Bawah Pratinjau: DOWNLOAD & FOTO ULANG */}
+                <div style={{ display: 'flex', gap: '8px', marginTop: '0.8rem' }}>
+                  <button
+                    type="button"
+                    onClick={handleDownload}
+                    style={{
+                      flex: 1,
+                      backgroundColor: '#ffffff',
+                      border: '1.5px solid #4F634C',
+                      color: '#4F634C',
+                      borderRadius: '9999px',
+                      padding: '0.65rem 1rem',
+                      fontSize: '0.88rem',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '6px',
+                      boxShadow: '0 2px 8px rgba(79, 99, 76, 0.1)'
+                    }}
+                  >
+                    <Download size={16} />
+                    Download Foto
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleResetPhotos}
+                    style={{
+                      backgroundColor: '#E6ECE4',
+                      border: '1px solid #9FB39E',
+                      color: '#344231',
+                      borderRadius: '9999px',
+                      padding: '0.65rem 1rem',
+                      fontSize: '0.85rem',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '5px'
+                    }}
+                  >
+                    <RefreshCw size={14} />
+                    Ulang
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* 4. FORM INPUT NAMA TAMU / SAHABAT */}
             <div style={{ marginBottom: '1.4rem' }}>
               <label 
                 htmlFor="guest-name-input"
@@ -657,7 +886,7 @@ export default function GuestUpload({ onNavigateToGallery }) {
               />
             </div>
 
-            {/* 3. FORM INPUT KIRIM UCAPAN & DOA SINGKAT */}
+            {/* 5. FORM INPUT KIRIM UCAPAN & DOA SINGKAT */}
             <div style={{ marginBottom: '1.8rem' }}>
               <label 
                 htmlFor="guest-message-input"
@@ -699,22 +928,22 @@ export default function GuestUpload({ onNavigateToGallery }) {
               />
             </div>
 
-            {/* 4. TOMBOL "KIRIM FOTO & DOA" DI TENGAH */}
+            {/* 6. TOMBOL "KIRIM FOTO & DOA" DI TENGAH */}
             <div style={{ textAlign: 'center', marginBottom: '2.5rem' }}>
               <button
                 type="submit"
-                disabled={isUploading || isCompressing || !compressedBlob}
+                disabled={isUploading || isComposing || !composedBlob}
                 style={{
                   backgroundColor: '#52654F',
                   color: '#ffffff',
                   border: 'none',
                   borderRadius: '9999px',
-                  padding: '0.7rem 2.4rem',
+                  padding: '0.75rem 2.4rem',
                   fontSize: '0.96rem',
                   fontFamily: 'var(--font-sans)',
                   fontWeight: 500,
-                  cursor: isUploading || isCompressing || !compressedBlob ? 'not-allowed' : 'pointer',
-                  opacity: !compressedBlob ? 0.65 : 1,
+                  cursor: isUploading || isComposing || !composedBlob ? 'not-allowed' : 'pointer',
+                  opacity: !composedBlob ? 0.65 : 1,
                   boxShadow: '0 4px 14px rgba(43, 58, 40, 0.2)',
                   transition: 'all 0.2s ease',
                   display: 'inline-flex',
@@ -724,10 +953,10 @@ export default function GuestUpload({ onNavigateToGallery }) {
                   minWidth: '180px'
                 }}
                 onMouseOver={(e) => {
-                  if (compressedBlob && !isUploading) e.currentTarget.style.backgroundColor = '#3F523C';
+                  if (composedBlob && !isUploading) e.currentTarget.style.backgroundColor = '#3F523C';
                 }}
                 onMouseOut={(e) => {
-                  if (compressedBlob && !isUploading) e.currentTarget.style.backgroundColor = '#52654F';
+                  if (composedBlob && !isUploading) e.currentTarget.style.backgroundColor = '#52654F';
                 }}
               >
                 {isUploading ? (
@@ -736,18 +965,21 @@ export default function GuestUpload({ onNavigateToGallery }) {
                     Mengunggah...
                   </>
                 ) : (
-                  'Kirim Foto & Doa'
+                  <>
+                    <UploadCloud size={18} />
+                    Kirim Foto & Doa
+                  </>
                 )}
               </button>
 
-              {!compressedBlob && (
+              {!composedBlob && (
                 <div style={{ fontSize: '0.74rem', color: '#738271', marginTop: '0.45rem' }}>
-                  * Pilih atau ambil foto terlebih dahulu
+                  * Ambil foto terlebih dahulu ({rawPhotos.filter(Boolean).length}/{totalSlotsNeeded})
                 </div>
               )}
             </div>
 
-            {/* 5. TOMBOL "LIVE GALERY" DI BAGIAN BAWAH SESUAI GAMBAR */}
+            {/* 7. TOMBOL "LIVE GALERY" DI BAGIAN BAWAH SESUAI GAMBAR */}
             <div style={{ display: 'flex', justifyContent: 'center' }}>
               <button
                 type="button"
@@ -771,7 +1003,6 @@ export default function GuestUpload({ onNavigateToGallery }) {
                 onMouseOut={(e) => (e.currentTarget.style.backgroundColor = '#ffffff')}
                 title="Buka Layar Slideshow Proyektor"
               >
-                {/* Ikon Galeri dengan multiple photo frame */}
                 <svg width="30" height="20" viewBox="0 0 34 22" fill="none">
                   <rect x="2" y="5" width="13" height="12" rx="2" stroke="#2B3A28" strokeWidth="1.5" />
                   <path d="M4 14 L7 10 L11 15" stroke="#2B3A28" strokeWidth="1.3" />
