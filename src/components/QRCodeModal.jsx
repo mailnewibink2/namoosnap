@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import QRCode from 'qrcode';
+import { parseWeddingTitle } from '../utils/weddingSettings';
 import { 
   X, 
   Download, 
@@ -109,6 +110,10 @@ export default function QRCodeModal({ isOpen, onClose, weddingInfo }) {
       drawCornerAccent(62, height - 62);
       drawCornerAccent(width - 62, height - 62);
 
+      // Set default text alignment selalu CENTER
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'alphabetic';
+
       // 4. Logo / Header Namoo Snap (Menggunakan Logo Gambar Digital Photo Booth)
       const logoImg = new Image();
       logoImg.crossOrigin = 'anonymous';
@@ -119,60 +124,75 @@ export default function QRCodeModal({ isOpen, onClose, weddingInfo }) {
       });
 
       if (logoImg.complete && logoImg.naturalWidth > 0) {
-        const logoTargetWidth = 260;
+        const logoTargetWidth = 230;
         const logoTargetHeight = (logoImg.naturalHeight / logoImg.naturalWidth) * logoTargetWidth;
-        ctx.drawImage(logoImg, (width - logoTargetWidth) / 2, 65, logoTargetWidth, logoTargetHeight);
+        ctx.drawImage(logoImg, (width - logoTargetWidth) / 2, 75, logoTargetWidth, logoTargetHeight);
       } else {
         ctx.fillStyle = '#2B3A28';
         ctx.font = 'bold 36px "Playfair Display", Georgia, serif';
         ctx.textAlign = 'center';
-        ctx.fillText('NAMOO SNAP', width / 2, 170);
+        ctx.fillText('NAMOO SNAP', width / 2, 160);
 
         ctx.fillStyle = '#C49A38';
         ctx.font = '600 22px "Inter", sans-serif';
-        ctx.fillText('DIGITAL PHOTO BOOTH', width / 2, 215);
+        ctx.fillText('DIGITAL PHOTO BOOTH', width / 2, 205);
       }
 
       // Garis Pembatas
       ctx.strokeStyle = '#C49A38';
       ctx.lineWidth = 1.5;
       ctx.beginPath();
-      ctx.moveTo(width / 2 - 120, 275);
-      ctx.lineTo(width / 2 + 120, 275);
+      ctx.moveTo(width / 2 - 130, 275);
+      ctx.lineTo(width / 2 + 130, 275);
       ctx.stroke();
 
-      // 5. Nama Pengantin & Tanggal
-      ctx.fillStyle = '#283625';
-      ctx.font = 'italic 58px "Playfair Display", Georgia, serif';
-      ctx.fillText(weddingInfo?.title || 'The Wedding', width / 2, 360);
+      // 5. Nama Pengantin & Tanggal (Format 3 Baris Rapi & Elegan)
+      const { prefix, couple } = parseWeddingTitle(weddingInfo?.title);
 
+      // Baris 1: The Wedding of
+      ctx.textAlign = 'center';
       ctx.fillStyle = '#657362';
-      ctx.font = '500 26px "Inter", sans-serif';
-      ctx.fillText(weddingInfo?.wedding_date || '', width / 2, 420);
+      ctx.font = 'italic 32px "Playfair Display", Georgia, serif';
+      ctx.fillText(prefix, width / 2, 330);
+
+      // Baris 2: Nama Pasangan (Auto-scaling agar tidak pernah terpotong)
+      ctx.fillStyle = '#283625';
+      let coupleFontSize = 54;
+      ctx.font = `bold ${coupleFontSize}px "Playfair Display", Georgia, serif`;
+      while (ctx.measureText(couple).width > 860 && coupleFontSize > 28) {
+        coupleFontSize -= 2;
+        ctx.font = `bold ${coupleFontSize}px "Playfair Display", Georgia, serif`;
+      }
+      ctx.fillText(couple, width / 2, 388);
+
+      // Baris 3: Tanggal Pernikahan
+      ctx.fillStyle = '#C49A38';
+      ctx.font = '600 24px "Inter", sans-serif';
+      ctx.fillText(weddingInfo?.wedding_date || '', width / 2, 440);
 
       // 6. Subheader Ajakan Scan
       ctx.fillStyle = '#2B3A28';
-      ctx.font = 'bold 44px "Playfair Display", Georgia, serif';
-      ctx.fillText('Abadikan & Bagikan Momen Anda', width / 2, 530);
+      ctx.font = 'bold 36px "Playfair Display", Georgia, serif';
+      ctx.fillText('Abadikan & Bagikan Momen Anda', width / 2, 515);
 
       ctx.fillStyle = '#556353';
-      ctx.font = 'normal 24px "Inter", sans-serif';
-      ctx.fillText('Scan QR Code menggunakan kamera HP Anda', width / 2, 580);
+      ctx.font = 'normal 22px "Inter", sans-serif';
+      ctx.fillText('Scan QR Code menggunakan kamera HP Anda', width / 2, 560);
 
       // 7. Kotak Frame QR Code
-      const qrBoxSize = 640;
+      const qrBoxSize = 580;
       const qrBoxX = (width - qrBoxSize) / 2;
-      const qrBoxY = 640;
+      const qrBoxY = 605;
 
       ctx.fillStyle = '#ffffff';
       ctx.shadowColor = 'rgba(40, 54, 37, 0.12)';
-      ctx.shadowBlur = 30;
-      ctx.shadowOffsetY = 12;
+      ctx.shadowBlur = 24;
+      ctx.shadowOffsetY = 10;
       ctx.fillRect(qrBoxX, qrBoxY, qrBoxSize, qrBoxSize);
       ctx.shadowColor = 'transparent'; // reset shadow
 
-      ctx.strokeStyle = '#e2eae0';
-      ctx.lineWidth = 2;
+      ctx.strokeStyle = '#dfb76c';
+      ctx.lineWidth = 1.5;
       ctx.strokeRect(qrBoxX, qrBoxY, qrBoxSize, qrBoxSize);
 
       // Gambar QR Image
@@ -183,7 +203,7 @@ export default function QRCodeModal({ isOpen, onClose, weddingInfo }) {
         qrImg.onload = resolve;
       });
 
-      const qrPadding = 30;
+      const qrPadding = 25;
       ctx.drawImage(
         qrImg, 
         qrBoxX + qrPadding, 
@@ -192,22 +212,44 @@ export default function QRCodeModal({ isOpen, onClose, weddingInfo }) {
         qrBoxSize - (qrPadding * 2)
       );
 
-      // 8. Tiga Langkah Mudah (1-2-3)
-      const stepY = 1370;
+      // 8. Tiga Langkah Mudah (Box Container Rapi di Tengah)
+      const infoBoxWidth = 840;
+      const infoBoxHeight = 220;
+      const infoBoxX = (width - infoBoxWidth) / 2;
+      const infoBoxY = 1235;
+
+      ctx.fillStyle = '#EBF0E9';
+      if (typeof ctx.roundRect === 'function') {
+        ctx.beginPath();
+        ctx.roundRect(infoBoxX, infoBoxY, infoBoxWidth, infoBoxHeight, 16);
+        ctx.fill();
+        ctx.strokeStyle = '#d0ddd0';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+      } else {
+        ctx.fillRect(infoBoxX, infoBoxY, infoBoxWidth, infoBoxHeight);
+      }
+
+      // Judul Box 3 Langkah
+      ctx.textAlign = 'center';
       ctx.fillStyle = '#283625';
-      ctx.font = 'bold 28px "Inter", sans-serif';
-      ctx.fillText('3 LANGKAH MUDAH', width / 2, stepY);
+      ctx.font = 'bold 24px "Inter", sans-serif';
+      ctx.fillText('✨ 3 LANGKAH MUDAH BERBAGI FOTO ✨', width / 2, infoBoxY + 45);
 
-      ctx.fillStyle = '#4b5749';
-      ctx.font = 'normal 23px "Inter", sans-serif';
-      ctx.fillText('1. Scan QR Code di atas dengan kamera HP', width / 2, stepY + 50);
-      ctx.fillText('2. Ambil foto seru Anda & pilih filter favorit', width / 2, stepY + 95);
-      ctx.fillText('3. Foto & doa Anda langsung tayang di layar proyektor!', width / 2, stepY + 140);
+      // Item Langkah (Rata kiri dengan margin presisi di dalam box)
+      ctx.textAlign = 'left';
+      const textStartX = infoBoxX + 60;
+      ctx.fillStyle = '#394837';
+      ctx.font = '500 22px "Inter", sans-serif';
+      ctx.fillText('1. Scan QR Code di atas menggunakan kamera HP Anda', textStartX, infoBoxY + 95);
+      ctx.fillText('2. Ambil foto seru (1, 2, atau 4 grid) & pilih filter favorit', textStartX, infoBoxY + 138);
+      ctx.fillText('3. Kirim, dan foto Anda langsung tayang di layar proyektor!', textStartX, infoBoxY + 180);
 
-      // Footer
+      // 9. Footer
+      ctx.textAlign = 'center';
       ctx.fillStyle = '#C49A38';
-      ctx.font = 'italic 22px "Playfair Display", Georgia, serif';
-      ctx.fillText('✨ Terima kasih telah merayakan hari bahagia kami ✨', width / 2, 1680);
+      ctx.font = 'italic 23px "Playfair Display", Georgia, serif';
+      ctx.fillText('✨ Terima kasih telah merayakan hari bahagia kami ✨', width / 2, 1665);
 
       // Download Kanvas
       const dataUrl = canvas.toDataURL('image/jpeg', 0.95);
@@ -412,21 +454,30 @@ export default function QRCodeModal({ isOpen, onClose, weddingInfo }) {
                   />
                 </div>
                 
-                <h4
-                  style={{
-                    fontFamily: 'var(--font-serif)',
-                    fontSize: '1.35rem',
-                    color: '#283625',
-                    margin: '0.35rem 0 0.15rem 0',
-                    fontWeight: 600,
-                  }}
-                >
-                  {weddingInfo?.title || 'The Wedding of Sarah & Dimas'}
-                </h4>
-
-                <div style={{ fontSize: '0.78rem', color: '#687765', marginBottom: '0.8rem' }}>
-                  {weddingInfo?.wedding_date || '24 September 2026'}
-                </div>
+                {(() => {
+                  const { prefix, couple } = parseWeddingTitle(weddingInfo?.title);
+                  return (
+                    <div style={{ marginBottom: '0.8rem' }}>
+                      <div style={{ fontFamily: 'var(--font-serif)', fontStyle: 'italic', fontSize: '0.88rem', color: '#687765' }}>
+                        {prefix}
+                      </div>
+                      <h4
+                        style={{
+                          fontFamily: 'var(--font-serif)',
+                          fontSize: '1.35rem',
+                          color: '#283625',
+                          margin: '0.15rem 0',
+                          fontWeight: 600,
+                        }}
+                      >
+                        {couple}
+                      </h4>
+                      <div style={{ fontSize: '0.78rem', color: '#C49A38', fontWeight: 600 }}>
+                        {weddingInfo?.wedding_date || '24 September 2026'}
+                      </div>
+                    </div>
+                  );
+                })()}
 
                 {/* Ajakan Singkat */}
                 <div 
