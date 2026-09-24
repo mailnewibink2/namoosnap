@@ -484,120 +484,130 @@ export default function GuestUpload({ onNavigateToGallery }) {
               disabled={isUploading || isComposing}
             />
 
-            {/* 1. KONTROL PILIHAN GRID (1 FOTO, 2 FOTO, 4 FOTO) */}
-            <div style={{ marginBottom: '1.2rem' }}>
-              <div 
-                style={{ 
-                  display: 'flex', 
-                  justifyContent: 'space-between', 
-                  alignItems: 'center', 
-                  marginBottom: '0.45rem' 
-                }}
-              >
-                <span 
+            {/* KONTROL PILIHAN GRID & FILTER (COMPACT & TIDAK FULL WIDTH) */}
+            <div 
+              style={{ 
+                display: 'flex', 
+                flexWrap: 'wrap', 
+                alignItems: 'flex-start',
+                justifyContent: 'flex-start',
+                gap: '0.75rem 1.4rem', 
+                marginBottom: '1.2rem' 
+              }}
+            >
+              {/* 1. KONTROL PILIHAN GRID */}
+              <div>
+                <div 
                   style={{ 
-                    fontSize: '0.92rem', 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    gap: '6px',
+                    marginBottom: '0.3rem' 
+                  }}
+                >
+                  <span 
+                    style={{ 
+                      fontSize: '0.86rem', 
+                      fontFamily: 'var(--font-serif)',
+                      fontWeight: 500,
+                      color: '#2B3A28', 
+                    }}
+                  >
+                    Grid
+                  </span>
+                  {totalSlotsNeeded > 1 && (
+                    <span style={{ fontSize: '0.72rem', color: '#C49A38', fontWeight: 600 }}>
+                      ({rawPhotos.filter(Boolean).length}/{totalSlotsNeeded})
+                    </span>
+                  )}
+                </div>
+
+                <div 
+                  style={{
+                    display: 'inline-flex',
+                    gap: '3px',
+                    backgroundColor: '#E6ECE4',
+                    padding: '3px',
+                    borderRadius: '8px'
+                  }}
+                >
+                  {[
+                    { id: '1', label: '1 Foto' },
+                    { id: '2', label: '2 Foto' },
+                    { id: '4', label: '4 Foto' },
+                  ].map((item) => (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => handleLayoutChange(item.id)}
+                      style={{
+                        border: 'none',
+                        borderRadius: '6px',
+                        padding: '0.24rem 0.6rem',
+                        fontSize: '0.76rem',
+                        fontWeight: layout === item.id ? 700 : 500,
+                        backgroundColor: layout === item.id ? '#2E3E2B' : 'transparent',
+                        color: layout === item.id ? '#ffffff' : '#455243',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s ease',
+                        boxShadow: layout === item.id ? '0 1px 4px rgba(43,58,40,0.2)' : 'none'
+                      }}
+                    >
+                      {item.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* 2. PILIHAN FILTER (NORMAL, BW, CLASSIC) */}
+              <div>
+                <div 
+                  style={{ 
+                    fontSize: '0.86rem', 
                     fontFamily: 'var(--font-serif)',
                     fontWeight: 500,
                     color: '#2B3A28', 
+                    marginBottom: '0.3rem' 
                   }}
                 >
-                  Grid
-                </span>
-                {totalSlotsNeeded > 1 && (
-                  <span style={{ fontSize: '0.76rem', color: '#C49A38', fontWeight: 600 }}>
-                    Slot {rawPhotos.filter(Boolean).length} / {totalSlotsNeeded}
-                  </span>
-                )}
-              </div>
+                  Filter
+                </div>
 
-              <div 
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(3, 1fr)',
-                  gap: '6px',
-                  backgroundColor: '#E6ECE4',
-                  padding: '4px',
-                  borderRadius: '10px'
-                }}
-              >
-                {[
-                  { id: '1', label: '1 Foto' },
-                  { id: '2', label: '2 Foto' },
-                  { id: '4', label: '4 Foto' },
-                ].map((item) => (
-                  <button
-                    key={item.id}
-                    type="button"
-                    onClick={() => handleLayoutChange(item.id)}
-                    style={{
-                      border: 'none',
-                      borderRadius: '8px',
-                      padding: '0.45rem 0',
-                      fontSize: '0.82rem',
-                      fontWeight: layout === item.id ? 700 : 500,
-                      backgroundColor: layout === item.id ? '#2E3E2B' : 'transparent',
-                      color: layout === item.id ? '#ffffff' : '#455243',
-                      cursor: 'pointer',
-                      transition: 'all 0.2s ease',
-                      boxShadow: layout === item.id ? '0 2px 6px rgba(43,58,40,0.2)' : 'none'
-                    }}
-                  >
-                    {item.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* 2. PILIHAN FILTER (NORMAL, BW, CLASSIC) */}
-            <div style={{ marginBottom: '1.4rem' }}>
-              <div 
-                style={{ 
-                  fontSize: '0.92rem', 
-                  fontFamily: 'var(--font-serif)',
-                  fontWeight: 500,
-                  color: '#2B3A28', 
-                  marginBottom: '0.45rem' 
-                }}
-              >
-                Filter
-              </div>
-
-              <div 
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(3, 1fr)',
-                  gap: '6px',
-                  backgroundColor: '#E6ECE4',
-                  padding: '4px',
-                  borderRadius: '10px'
-                }}
-              >
-                {[
-                  { id: 'normal', label: 'Normal' },
-                  { id: 'bw', label: 'B & W' },
-                  { id: 'classic', label: 'Classic' },
-                ].map((f) => (
-                  <button
-                    key={f.id}
-                    type="button"
-                    onClick={() => handleFilterChange(f.id)}
-                    style={{
-                      border: 'none',
-                      borderRadius: '8px',
-                      padding: '0.45rem 0',
-                      fontSize: '0.82rem',
-                      fontWeight: filter === f.id ? 700 : 500,
-                      backgroundColor: filter === f.id ? '#2E3E2B' : 'transparent',
-                      color: filter === f.id ? '#ffffff' : '#455243',
-                      cursor: 'pointer',
-                      transition: 'all 0.2s ease',
-                      boxShadow: filter === f.id ? '0 2px 6px rgba(43,58,40,0.2)' : 'none'
-                    }}
-                  >
-                    {f.label}
-                  </button>
-                ))}
+                <div 
+                  style={{
+                    display: 'inline-flex',
+                    gap: '3px',
+                    backgroundColor: '#E6ECE4',
+                    padding: '3px',
+                    borderRadius: '8px'
+                  }}
+                >
+                  {[
+                    { id: 'normal', label: 'Normal' },
+                    { id: 'bw', label: 'B & W' },
+                    { id: 'classic', label: 'Classic' },
+                  ].map((f) => (
+                    <button
+                      key={f.id}
+                      type="button"
+                      onClick={() => handleFilterChange(f.id)}
+                      style={{
+                        border: 'none',
+                        borderRadius: '6px',
+                        padding: '0.24rem 0.6rem',
+                        fontSize: '0.76rem',
+                        fontWeight: filter === f.id ? 700 : 500,
+                        backgroundColor: filter === f.id ? '#2E3E2B' : 'transparent',
+                        color: filter === f.id ? '#ffffff' : '#455243',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s ease',
+                        boxShadow: filter === f.id ? '0 1px 4px rgba(43,58,40,0.2)' : 'none'
+                      }}
+                    >
+                      {f.label}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
 
