@@ -1,8 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import GuestUpload from './components/GuestUpload';
 import LiveSlideshow from './components/LiveSlideshow';
 import AdminModeration from './components/AdminModeration';
-import { Presentation, ShieldCheck, ArrowLeft, Lock, KeyRound, X, LogOut } from 'lucide-react';
+import QRCodeModal from './components/QRCodeModal';
+import { getWeddingSettings } from './utils/weddingSettings';
+import { Presentation, ShieldCheck, ArrowLeft, Lock, KeyRound, X, LogOut, QrCode as QrIcon } from 'lucide-react';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('guest'); // 'guest' | 'slideshow' | 'admin'
@@ -10,8 +12,16 @@ export default function App() {
     return sessionStorage.getItem('namoo_wo_auth') === 'true';
   });
   const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [showQrModal, setShowQrModal] = useState(false);
+  const [weddingInfo, setWeddingInfo] = useState({ title: '', wedding_date: '' });
   const [passwordInput, setPasswordInput] = useState('');
   const [passwordError, setPasswordError] = useState('');
+
+  useEffect(() => {
+    getWeddingSettings().then((res) => {
+      if (res) setWeddingInfo(res);
+    });
+  }, []);
 
   // Password yang sah (bisa diset di .env atau default 'namoo123' / '1234')
   const validPassword = import.meta.env.VITE_WO_PASSWORD || 'namoo123';
@@ -55,19 +65,48 @@ export default function App() {
       */}
       {activeTab === 'guest' ? (
         <div style={{ position: 'relative' }}>
-          {/* Akses Kru WO di pojok kanan atas */}
+          {/* Akses QR Acara & Kru WO di pojok kanan atas */}
           <div 
             style={{ 
               position: 'absolute', 
               top: '12px', 
               right: '14px', 
-              zIndex: 50 
+              zIndex: 50,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px'
             }}
           >
             <button
+              onClick={() => setShowQrModal(true)}
+              style={{
+                background: 'rgba(230, 236, 228, 0.75)',
+                backdropFilter: 'blur(6px)',
+                border: '1px solid rgba(159, 179, 158, 0.5)',
+                color: '#2B3A28',
+                borderRadius: '9999px',
+                padding: '5px 11px',
+                fontSize: '0.74rem',
+                fontWeight: 600,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px',
+                opacity: 0.85,
+                transition: 'all 0.2s',
+              }}
+              onMouseOver={(e) => (e.currentTarget.style.opacity = '1')}
+              onMouseOut={(e) => (e.currentTarget.style.opacity = '0.85')}
+              title="Tampilkan QR Code Acara"
+            >
+              <QrIcon size={12} color="#C49A38" />
+              <span>QR Acara</span>
+            </button>
+
+            <button
               onClick={handleOpenWo}
               style={{
-                background: 'rgba(230, 236, 228, 0.7)',
+                background: 'rgba(230, 236, 228, 0.75)',
                 backdropFilter: 'blur(6px)',
                 border: '1px solid rgba(159, 179, 158, 0.5)',
                 color: '#2B3A28',
@@ -79,11 +118,11 @@ export default function App() {
                 display: 'flex',
                 alignItems: 'center',
                 gap: '5px',
-                opacity: 0.8,
+                opacity: 0.85,
                 transition: 'all 0.2s',
               }}
               onMouseOver={(e) => (e.currentTarget.style.opacity = '1')}
-              onMouseOut={(e) => (e.currentTarget.style.opacity = '0.8')}
+              onMouseOut={(e) => (e.currentTarget.style.opacity = '0.85')}
               title="Akses Kru Wedding Organizer"
             >
               <Lock size={12} />
@@ -360,6 +399,13 @@ export default function App() {
           </div>
         </div>
       )}
+
+      {/* Modal QR Code Acara */}
+      <QRCodeModal
+        isOpen={showQrModal}
+        onClose={() => setShowQrModal(false)}
+        weddingInfo={weddingInfo}
+      />
 
     </div>
   );

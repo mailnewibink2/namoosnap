@@ -12,10 +12,12 @@ import {
   AlertCircle,
   CheckCheck,
   Filter,
-  Image as ImageIcon
+  Image as ImageIcon,
+  QrCode as QrIcon
 } from 'lucide-react';
 
 import { getWeddingSettings, saveWeddingSettings } from '../utils/weddingSettings';
+import QRCodeModal from './QRCodeModal';
 
 export default function AdminModeration() {
   const [photos, setPhotos] = useState([]);
@@ -29,6 +31,7 @@ export default function AdminModeration() {
   // Pengaturan Nama Pengantin & Tanggal Acara
   const [weddingInfo, setWeddingInfo] = useState({ title: '', wedding_date: '' });
   const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [showQrModal, setShowQrModal] = useState(false);
   const [isSavingSettings, setIsSavingSettings] = useState(false);
 
   useEffect(() => {
@@ -279,8 +282,25 @@ export default function AdminModeration() {
           </p>
         </div>
 
-        {/* Action Button: Settings, Refresh & Approve All */}
+        {/* Action Button: Settings, QR Code, Refresh & Approve All */}
         <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap' }}>
+          <button 
+            onClick={() => setShowQrModal(true)} 
+            className="btn-secondary"
+            style={{ 
+              borderColor: 'var(--color-sage-600)', 
+              color: 'var(--color-sage-900)',
+              backgroundColor: '#FAF9F5',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px'
+            }}
+            title="Buka & Cetak QR Code Meja Acara"
+          >
+            <QrIcon size={16} color="#C49A38" />
+            <span>QR Code Acara</span>
+          </button>
+
           <button 
             onClick={() => setShowSettingsModal(true)} 
             className="btn-secondary"
@@ -810,6 +830,13 @@ export default function AdminModeration() {
           </div>
         </div>
       )}
+
+      {/* Modal QR Code & Cetak Kartu Meja */}
+      <QRCodeModal
+        isOpen={showQrModal}
+        onClose={() => setShowQrModal(false)}
+        weddingInfo={weddingInfo}
+      />
     </div>
   );
 }

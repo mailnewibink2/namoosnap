@@ -11,8 +11,11 @@ import {
   Heart, 
   Image as ImageIcon,
   Clock,
-  Radio
+  Radio,
+  QrCode as QrIcon
 } from 'lucide-react';
+import { getWeddingSettings } from '../utils/weddingSettings';
+import QRCodeModal from './QRCodeModal';
 
 export default function LiveSlideshow() {
   const [photos, setPhotos] = useState([]);
@@ -22,9 +25,17 @@ export default function LiveSlideshow() {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [newPhotoAlert, setNewPhotoAlert] = useState(null);
+  const [showQrModal, setShowQrModal] = useState(false);
+  const [weddingInfo, setWeddingInfo] = useState({ title: '', wedding_date: '' });
 
   const containerRef = useRef(null);
   const timerRef = useRef(null);
+
+  useEffect(() => {
+    getWeddingSettings().then((res) => {
+      if (res) setWeddingInfo(res);
+    });
+  }, []);
 
   // 1. Ambil data foto yang sudah disetujui (is_approved = true)
   const fetchApprovedPhotos = useCallback(async () => {
@@ -238,6 +249,28 @@ export default function LiveSlideshow() {
               {newPhotoAlert}
             </div>
           )}
+
+          <button
+            onClick={() => setShowQrModal(true)}
+            style={{
+              background: 'rgba(223, 183, 108, 0.2)',
+              border: '1px solid var(--color-gold-400)',
+              color: 'var(--color-gold-400)',
+              padding: '0.5rem 0.9rem',
+              borderRadius: 'var(--radius-full)',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.4rem',
+              fontSize: '0.82rem',
+              fontWeight: 600,
+              backdropFilter: 'blur(8px)',
+            }}
+            title="Tampilkan QR Code untuk Tamu"
+          >
+            <QrIcon size={15} />
+            <span>QR Code</span>
+          </button>
 
           <button
             onClick={() => setIsPlaying(!isPlaying)}
@@ -516,6 +549,13 @@ export default function LiveSlideshow() {
           to { opacity: 1; transform: scale(1); }
         }
       `}</style>
+
+      {/* Modal QR Code untuk Proyektor / Tamu */}
+      <QRCodeModal
+        isOpen={showQrModal}
+        onClose={() => setShowQrModal(false)}
+        weddingInfo={weddingInfo}
+      />
     </div>
   );
 }
