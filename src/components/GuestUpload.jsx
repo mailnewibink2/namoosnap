@@ -41,6 +41,7 @@ export default function GuestUpload({ onNavigateToGallery }) {
   const [isUploading, setIsUploading] = useState(false);
   const [statusMessage, setStatusMessage] = useState({ type: '', text: '' });
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [showDownloadConfirmModal, setShowDownloadConfirmModal] = useState(false);
 
   const fileInputCameraRef = useRef(null);
   const fileInputGalleryRef = useRef(null);
@@ -163,9 +164,9 @@ export default function GuestUpload({ onNavigateToGallery }) {
     });
   };
 
-  // Unggah foto ke Supabase Storage & Database
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  // Buka modal konfirmasi unduh & kirim sebelum upload
+  const handleSubmit = (e) => {
+    if (e) e.preventDefault();
 
     if (!composedBlob) {
       setStatusMessage({ type: 'error', text: 'Silakan ambil foto hingga slot terpenuhi terlebih dahulu.' });
@@ -184,6 +185,14 @@ export default function GuestUpload({ onNavigateToGallery }) {
       });
       return;
     }
+
+    // Tampilkan modal pilihan: "Unduh & Kirim" atau "Hanya Kirim"
+    setShowDownloadConfirmModal(true);
+  };
+
+  // Eksekusi upload foto ke Supabase Storage & Database
+  const executeUpload = async () => {
+    setShowDownloadConfirmModal(false);
 
     try {
       setIsUploading(true);
@@ -250,6 +259,17 @@ export default function GuestUpload({ onNavigateToGallery }) {
     } finally {
       setIsUploading(false);
     }
+  };
+
+  // Opsi 1: Unduh foto ke memori HP + Lanjut Kirim
+  const handleDownloadAndSubmit = () => {
+    handleDownload();
+    executeUpload();
+  };
+
+  // Opsi 2: Hanya Kirim ke proyektor tanpa unduh
+  const handleOnlySubmit = () => {
+    executeUpload();
   };
 
   const handleUploadAnother = () => {
@@ -1029,6 +1049,226 @@ export default function GuestUpload({ onNavigateToGallery }) {
         )}
 
       </div>
+
+      {/* ======================================================== */}
+      {/* MODAL KONFIRMASI: UNDUH & KIRIM ATAU HANYA KIRIM        */}
+      {/* ======================================================== */}
+      {showDownloadConfirmModal && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            backgroundColor: 'rgba(20, 28, 19, 0.65)',
+            backdropFilter: 'blur(6px)',
+            WebkitBackdropFilter: 'blur(6px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '1.2rem',
+            zIndex: 9999,
+          }}
+          onClick={() => setShowDownloadConfirmModal(false)}
+        >
+          <div
+            style={{
+              backgroundColor: '#FAF9F5',
+              borderRadius: '22px',
+              maxWidth: '360px',
+              width: '100%',
+              padding: '1.6rem 1.3rem',
+              boxShadow: '0 20px 40px rgba(0, 0, 0, 0.25)',
+              border: '1.5px solid #dbe4d9',
+              textAlign: 'center',
+              boxSizing: 'border-box',
+              position: 'relative',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Tombol Tutup Silang di Pojok */}
+            <button
+              type="button"
+              onClick={() => setShowDownloadConfirmModal(false)}
+              style={{
+                position: 'absolute',
+                top: '12px',
+                right: '12px',
+                backgroundColor: '#E6ECE4',
+                border: 'none',
+                borderRadius: '50%',
+                width: '30px',
+                height: '30px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                color: '#455243',
+              }}
+            >
+              <X size={16} />
+            </button>
+
+            {/* Icon Header */}
+            <div
+              style={{
+                width: '52px',
+                height: '52px',
+                borderRadius: '50%',
+                backgroundColor: '#E6ECE4',
+                color: '#2E3E2B',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                margin: '0 auto 0.75rem auto',
+                border: '1px solid #c9d8c7',
+              }}
+            >
+              <Sparkles size={24} color="#C49A38" />
+            </div>
+
+            <h3
+              style={{
+                fontFamily: 'var(--font-serif)',
+                fontSize: '1.3rem',
+                color: '#283625',
+                marginBottom: '0.35rem',
+                fontWeight: 600,
+              }}
+            >
+              Simpan Foto Kenangan?
+            </h3>
+
+            <p
+              style={{
+                fontSize: '0.84rem',
+                color: '#556353',
+                lineHeight: 1.45,
+                margin: '0 auto 1rem auto',
+                maxWidth: '290px',
+              }}
+            >
+              Jangan sampai lupa mengunduh foto ini! Pilih <strong>Unduh & Kirim</strong> untuk menyimpannya ke HP Anda sekaligus mengirim ke proyektor.
+            </p>
+
+            {/* Pratinjau Miniatur Foto Hasil */}
+            {composedUrl && (
+              <div
+                style={{
+                  maxWidth: '140px',
+                  maxHeight: '180px',
+                  margin: '0 auto 1.15rem auto',
+                  borderRadius: '10px',
+                  overflow: 'hidden',
+                  boxShadow: '0 4px 14px rgba(43, 58, 40, 0.15)',
+                  border: '2px solid #ffffff',
+                }}
+              >
+                <img
+                  src={composedUrl}
+                  alt="Mini Preview"
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'contain',
+                    display: 'block',
+                    backgroundColor: '#FAF8F4',
+                  }}
+                />
+              </div>
+            )}
+
+            {/* Pilihan Tombol Aksi */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {/* Opsi 1: Unduh & Kirim (Recommended) */}
+              <button
+                type="button"
+                id="btn-download-and-submit"
+                onClick={handleDownloadAndSubmit}
+                style={{
+                  backgroundColor: '#2E3E2B',
+                  color: '#ffffff',
+                  border: 'none',
+                  borderRadius: '12px',
+                  padding: '0.8rem 1rem',
+                  fontSize: '0.94rem',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px',
+                  boxShadow: '0 4px 12px rgba(46, 62, 43, 0.25)',
+                  transition: 'background-color 0.2s',
+                }}
+                onMouseOver={(e) => (e.currentTarget.style.backgroundColor = '#1d271b')}
+                onMouseOut={(e) => (e.currentTarget.style.backgroundColor = '#2E3E2B')}
+              >
+                <Download size={18} />
+                <span>Unduh & Kirim</span>
+                <span
+                  style={{
+                    fontSize: '0.66rem',
+                    backgroundColor: '#C49A38',
+                    color: '#ffffff',
+                    padding: '2px 6px',
+                    borderRadius: '999px',
+                    fontWeight: 700,
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.04em',
+                    marginLeft: '2px',
+                  }}
+                >
+                  Saran
+                </span>
+              </button>
+
+              {/* Opsi 2: Hanya Kirim */}
+              <button
+                type="button"
+                id="btn-only-submit"
+                onClick={handleOnlySubmit}
+                style={{
+                  backgroundColor: '#ffffff',
+                  color: '#344231',
+                  border: '1.5px solid #9FB39E',
+                  borderRadius: '12px',
+                  padding: '0.72rem 1rem',
+                  fontSize: '0.9rem',
+                  fontWeight: 500,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px',
+                  transition: 'background-color 0.2s',
+                }}
+                onMouseOver={(e) => (e.currentTarget.style.backgroundColor = '#E6ECE4')}
+                onMouseOut={(e) => (e.currentTarget.style.backgroundColor = '#ffffff')}
+              >
+                <UploadCloud size={17} color="#4F634C" />
+                <span>Hanya Kirim</span>
+              </button>
+
+              {/* Opsi 3: Batal / Kembali Edit */}
+              <button
+                type="button"
+                onClick={() => setShowDownloadConfirmModal(false)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: '#738271',
+                  fontSize: '0.8rem',
+                  padding: '0.4rem',
+                  cursor: 'pointer',
+                  marginTop: '2px',
+                }}
+              >
+                Batal / Periksa Lagi
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
