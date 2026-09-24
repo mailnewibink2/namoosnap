@@ -494,8 +494,15 @@ export default function GuestUpload({ onNavigateToGallery }) {
                   marginBottom: '0.45rem' 
                 }}
               >
-                <span style={{ fontSize: '0.82rem', fontWeight: 600, color: '#384336', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-                  Pilih Format Grid:
+                <span 
+                  style={{ 
+                    fontSize: '0.92rem', 
+                    fontFamily: 'var(--font-serif)',
+                    fontWeight: 500,
+                    color: '#2B3A28', 
+                  }}
+                >
+                  Grid
                 </span>
                 {totalSlotsNeeded > 1 && (
                   <span style={{ fontSize: '0.76rem', color: '#C49A38', fontWeight: 600 }}>
@@ -544,8 +551,16 @@ export default function GuestUpload({ onNavigateToGallery }) {
 
             {/* 2. PILIHAN FILTER (NORMAL, BW, CLASSIC) */}
             <div style={{ marginBottom: '1.4rem' }}>
-              <div style={{ fontSize: '0.82rem', fontWeight: 600, color: '#384336', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '0.45rem' }}>
-                Pilih Efek Filter:
+              <div 
+                style={{ 
+                  fontSize: '0.92rem', 
+                  fontFamily: 'var(--font-serif)',
+                  fontWeight: 500,
+                  color: '#2B3A28', 
+                  marginBottom: '0.45rem' 
+                }}
+              >
+                Filter
               </div>
 
               <div 
