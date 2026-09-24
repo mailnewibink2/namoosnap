@@ -1,10 +1,47 @@
-// Utilitas untuk menggabungkan 1, 2, atau 4 foto dengan layout grid, filter, dan wedding watermark frame
+// Utilitas untuk menggabungkan 1, 2, atau 4 foto dengan layout grid, filter, dan wedding watermark frame terintegrasi
+
+function drawWrappedText(ctx, text, x, y, maxWidth, lineHeight, maxLines = 2) {
+  if (!text) return;
+  const words = text.split(' ');
+  let line = '';
+  const lines = [];
+
+  for (let n = 0; n < words.length; n++) {
+    const testLine = line + words[n] + ' ';
+    const metrics = ctx.measureText(testLine);
+    if (metrics.width > maxWidth && n > 0) {
+      lines.push(line.trim());
+      line = words[n] + ' ';
+      if (lines.length >= maxLines - 1) {
+        const remaining = words.slice(n).join(' ');
+        if (ctx.measureText(remaining).width > maxWidth) {
+          line = remaining.slice(0, Math.floor(remaining.length * 0.7)) + '...';
+        } else {
+          line = remaining;
+        }
+        break;
+      }
+    } else {
+      line = testLine;
+    }
+  }
+  lines.push(line.trim());
+
+  const totalHeight = (lines.length - 1) * lineHeight;
+  const startY = y - totalHeight / 2;
+
+  lines.forEach((l, i) => {
+    ctx.fillText(l, x, startY + i * lineHeight);
+  });
+}
 
 export async function composePhotoboothImage({
   images, // Array of Image elements or Image URLs
   layout = '1', // '1' | '2' | '4'
   filter = 'normal', // 'normal' | 'bw' | 'classic'
   weddingInfo = { title: 'The Wedding of Sarah & Dimas', wedding_date: '24 September 2026' },
+  guestName = '',
+  message = '',
 }) {
   // Load semua image jika masih berupa URL/Blob
   const loadedImages = await Promise.all(
@@ -30,7 +67,7 @@ export async function composePhotoboothImage({
   const CANVAS_WIDTH = 1080;
   const PADDING = 44;
   const GAP = 28;
-  const FOOTER_HEIGHT = 160;
+  const FOOTER_HEIGHT = 220; // Ruang proporsional untuk nama pengantin, tanggal, nama tamu, dan ucapan
 
   let canvasHeight = 1080;
 
@@ -40,7 +77,7 @@ export async function composePhotoboothImage({
   let slots = [];
 
   if (layout === '1') {
-    // 1 Foto Tunggal (Format Portrait 4:5 atau 1:1)
+    // 1 Foto Tunggal (Format Portrait)
     slotWidth = CANVAS_WIDTH - PADDING * 2;
     slotHeight = Math.round(slotWidth * 1.05);
     canvasHeight = PADDING + slotHeight + FOOTER_HEIGHT + PADDING;
@@ -78,7 +115,7 @@ export async function composePhotoboothImage({
   ctx.fillRect(0, 0, CANVAS_WIDTH, canvasHeight);
 
   // Garis tepi tipis elegan di sekeliling frame
-  ctx.strokeStyle = 'rgba(79, 99, 76, 0.15)';
+  ctx.strokeStyle = 'rgba(79, 99, 76, 0.18)';
   ctx.lineWidth = 2;
   ctx.strokeRect(16, 16, CANVAS_WIDTH - 32, canvasHeight - 32);
 
@@ -133,32 +170,65 @@ export async function composePhotoboothImage({
     ctx.stroke();
   });
 
-  // 3. Render Wedding Watermark / Sign di Footer Frame
-  const footerCenterY = canvasHeight - FOOTER_HEIGHT / 2 - 8;
+  // 3. Render Footer Frame (Wedding Watermark + Nama Tamu & Doa/Ucapan)
+  const footerTop = canvasHeight - PADDING - FOOTER_HEIGHT;
+  const centerX = CANVAS_WIDTH / 2;
 
-  // Ikon ornamen pembatas atas footer
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
 
-  // Ornamen tengah
+  // --- BAGIAN A: ACARA PERNIKAHAN & TANGGAL ---
+  ctx.fillStyle = '#283625'; // Deep forest green
+  ctx.font = 'bold 31px "Playfair Display", Georgia, serif';
+  ctx.fillText(weddingInfo.title || 'The Wedding of Sarah & Dimas', centerX, footerTop + 30);
+
   ctx.fillStyle = '#C49A38'; // Gold accent
-  ctx.font = '22px serif';
-  ctx.fillText('❦', CANVAS_WIDTH / 2, footerCenterY - 42);
+  ctx.font = '600 18px "Inter", "Plus Jakarta Sans", sans-serif';
+  ctx.fillText(weddingInfo.wedding_date || '24 September 2026', centerX, footerTop + 62);
 
-  // Judul Pernikahan (Nama Pengantin)
-  ctx.fillStyle = '#2B3A28'; // Deep forest green
-  ctx.font = 'bold 36px "Cormorant Garamond", Georgia, serif';
-  ctx.fillText(weddingInfo.title || 'The Wedding of Sarah & Dimas', CANVAS_WIDTH / 2, footerCenterY - 6);
+  // Garis Pembatas Halus dengan Ornamen Tengah
+  ctx.strokeStyle = 'rgba(196, 154, 56, 0.35)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(centerX - 170, footerTop + 86);
+  ctx.lineTo(centerX - 18, footerTop + 86);
+  ctx.moveTo(centerX + 18, footerTop + 86);
+  ctx.lineTo(centerX + 170, footerTop + 86);
+  ctx.stroke();
 
-  // Tanggal Pernikahan
-  ctx.fillStyle = '#6E7C6C'; // Soft sage grey
-  ctx.font = '500 21px "Plus Jakarta Sans", sans-serif';
-  ctx.fillText(weddingInfo.wedding_date || '24 September 2026', CANVAS_WIDTH / 2, footerCenterY + 34);
+  ctx.fillStyle = '#C49A38';
+  ctx.font = '14px serif';
+  ctx.fillText('❦', centerX, footerTop + 86);
 
-  // Branding kecil Namoo Snap di sudut bawah
-  ctx.fillStyle = '#9FB39E';
-  ctx.font = '600 13px "Plus Jakarta Sans", sans-serif';
-  ctx.fillText('NAMOO SNAP • DIGITAL PHOTOBOOTH', CANVAS_WIDTH / 2, canvasHeight - 24);
+  // --- BAGIAN B: NAMA TAMU & UCAPAN DOA TERPADU ---
+  const cleanName = guestName.trim();
+  const cleanMessage = message.trim();
+
+  if (cleanName && cleanMessage) {
+    // Ada Nama Tamu & Ada Pesan Ucapan
+    ctx.fillStyle = '#2B3A28';
+    ctx.font = 'bold 25px "Playfair Display", Georgia, serif';
+    ctx.fillText(`Dari: ${cleanName}`, centerX, footerTop + 118);
+
+    ctx.fillStyle = '#556353';
+    ctx.font = 'italic 20px "Playfair Display", Georgia, serif';
+    drawWrappedText(ctx, `"${cleanMessage}"`, centerX, footerTop + 154, 940, 26, 2);
+  } else if (cleanName) {
+    // Hanya ada Nama Tamu
+    ctx.fillStyle = '#2B3A28';
+    ctx.font = 'bold 27px "Playfair Display", Georgia, serif';
+    ctx.fillText(`Dari: ${cleanName}`, centerX, footerTop + 132);
+  } else {
+    // Belum mengisi nama (placeholder elegan saat sedang mengambil foto)
+    ctx.fillStyle = '#899986';
+    ctx.font = 'italic 18px "Playfair Display", Georgia, serif';
+    ctx.fillText('Abadikan Momen Hangat & Penuh Kebahagiaan', centerX, footerTop + 130);
+  }
+
+  // Branding kecil Namoo Snap di paling bawah
+  ctx.fillStyle = '#A2B3A0';
+  ctx.font = '600 12px "Inter", "Plus Jakarta Sans", sans-serif';
+  ctx.fillText('NAMOO SNAP • DIGITAL PHOTOBOOTH', centerX, canvasHeight - 20);
 
   return new Promise((resolve, reject) => {
     canvas.toBlob(

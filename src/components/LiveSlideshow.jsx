@@ -365,14 +365,14 @@ export default function LiveSlideshow() {
               justifyContent: 'center',
             }}
           >
-            {/* Foto Utama */}
+            {/* Foto Utama (Desain Nama Pengantin, Nama Tamu & Ucapan Sudah Terintegrasi di dalam Foto) */}
             <img 
               key={currentPhoto?.id}
               src={currentPhoto?.image_url} 
               alt={`Foto dari ${currentPhoto?.guest_name}`}
               style={{
                 maxWidth: '100%',
-                maxHeight: '100%',
+                maxHeight: isFullscreen ? '90vh' : '78vh',
                 objectFit: 'contain',
                 borderRadius: 'var(--radius-md)',
                 boxShadow: '0 20px 50px rgba(0, 0, 0, 0.6)',
@@ -380,67 +380,6 @@ export default function LiveSlideshow() {
                 animation: 'fadeIn 0.7s cubic-bezier(0.16, 1, 0.3, 1)',
               }}
             />
-
-            {/* Floating Glassmorphic Caption Card */}
-            <div 
-              style={{
-                position: 'absolute',
-                bottom: '1.8rem',
-                left: '50%',
-                transform: 'translateX(-50%)',
-                background: 'rgba(23, 29, 21, 0.88)',
-                backdropFilter: 'blur(16px)',
-                border: '1px solid rgba(223, 183, 108, 0.35)',
-                borderRadius: 'var(--radius-md)',
-                padding: '1rem 1.6rem',
-                maxWidth: '85%',
-                width: '540px',
-                textAlign: 'center',
-                boxShadow: '0 12px 35px rgba(0,0,0,0.5)',
-                zIndex: 20,
-              }}
-            >
-              <div 
-                style={{ 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  justifyContent: 'center', 
-                  gap: '0.4rem', 
-                  color: 'var(--color-gold-400)',
-                  fontSize: '0.78rem',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.12em',
-                  fontWeight: 600,
-                  marginBottom: '0.2rem'
-                }}
-              >
-                <Sparkles size={13} />
-                Dari Tamu Terkasih
-              </div>
-              <h3 
-                style={{ 
-                  fontFamily: 'var(--font-serif)', 
-                  fontSize: '1.5rem', 
-                  margin: '0.1rem 0 0.4rem 0',
-                  color: '#ffffff'
-                }}
-              >
-                {currentPhoto?.guest_name}
-              </h3>
-              {currentPhoto?.message && (
-                <p 
-                  style={{ 
-                    fontSize: '0.98rem', 
-                    fontStyle: 'italic', 
-                    color: '#e4ede1', 
-                    margin: 0,
-                    lineHeight: 1.4
-                  }}
-                >
-                  "{currentPhoto?.message}"
-                </p>
-              )}
-            </div>
 
             {/* Navigasi Panah Kiri & Kanan */}
             {photos.length > 1 && (

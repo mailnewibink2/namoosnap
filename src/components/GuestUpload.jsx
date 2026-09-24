@@ -55,8 +55,15 @@ export default function GuestUpload({ onNavigateToGallery }) {
 
   const totalSlotsNeeded = parseInt(layout, 10);
 
-  // Jalankan komposisi kanvas setiap kali foto, layout, atau filter berubah
-  const triggerComposition = useCallback(async (photosList, selectedLayout, selectedFilter, info) => {
+  // Jalankan komposisi kanvas setiap kali foto, layout, filter, nama tamu, atau doa berubah
+  const triggerComposition = useCallback(async (
+    photosList, 
+    selectedLayout, 
+    selectedFilter, 
+    info,
+    name = guestName,
+    msg = message
+  ) => {
     const slotsCount = parseInt(selectedLayout, 10);
     if (photosList.length < slotsCount) return;
 
@@ -68,6 +75,8 @@ export default function GuestUpload({ onNavigateToGallery }) {
         layout: selectedLayout,
         filter: selectedFilter,
         weddingInfo: info,
+        guestName: name,
+        message: msg,
       });
 
       setComposedBlob(result.blob);
@@ -77,7 +86,18 @@ export default function GuestUpload({ onNavigateToGallery }) {
     } finally {
       setIsComposing(false);
     }
-  }, []);
+  }, [guestName, message]);
+
+  // Re-compose otomatis dengan debounce saat nama tamu atau ucapan diketik
+  useEffect(() => {
+    if (rawPhotos.filter(Boolean).length < totalSlotsNeeded) return;
+
+    const timer = setTimeout(() => {
+      triggerComposition(rawPhotos, layout, filter, weddingInfo, guestName, message);
+    }, 280);
+
+    return () => clearTimeout(timer);
+  }, [guestName, message, layout, filter, weddingInfo, totalSlotsNeeded]);
 
   // Tangani saat foto diambil dari kamera / galeri
   const handleFileChange = async (e) => {
@@ -106,7 +126,7 @@ export default function GuestUpload({ onNavigateToGallery }) {
       setActiveSlot(nextSlot);
     } else {
       setActiveSlot(0);
-      triggerComposition(newPhotos, layout, filter, weddingInfo);
+      triggerComposition(newPhotos, layout, filter, weddingInfo, guestName, message);
     }
 
     if (fileInputCameraRef.current) fileInputCameraRef.current.value = '';
@@ -121,7 +141,7 @@ export default function GuestUpload({ onNavigateToGallery }) {
 
     // Jika foto yang ada sudah memenuhi slot baru, langsung recompose
     if (rawPhotos.filter(Boolean).length >= slotsCount) {
-      triggerComposition(rawPhotos, newLayout, filter, weddingInfo);
+      triggerComposition(rawPhotos, newLayout, filter, weddingInfo, guestName, message);
     } else {
       setComposedBlob(null);
       setComposedUrl('');
@@ -132,7 +152,7 @@ export default function GuestUpload({ onNavigateToGallery }) {
   const handleFilterChange = (newFilter) => {
     setFilter(newFilter);
     if (rawPhotos.filter(Boolean).length >= totalSlotsNeeded) {
-      triggerComposition(rawPhotos, layout, newFilter, weddingInfo);
+      triggerComposition(rawPhotos, layout, newFilter, weddingInfo, guestName, message);
     }
   };
 
@@ -146,12 +166,34 @@ export default function GuestUpload({ onNavigateToGallery }) {
     setActiveSlot(0);
   };
 
-  // Unduh hasil foto ke perangkat tamu
-  const handleDownload = () => {
-    if (!composedUrl) return;
+  // Unduh hasil foto ke perangkat tamu (terintegrasi nama pengantin, nama tamu & ucapan)
+  const handleDownload = async () => {
+    let finalUrl = composedUrl;
+
+    if (rawPhotos.filter(Boolean).length >= totalSlotsNeeded) {
+      try {
+        const slotsCount = parseInt(layout, 10);
+        const imagesToCompose = rawPhotos.slice(0, slotsCount).map((p) => p.previewUrl);
+        const result = await composePhotoboothImage({
+          images: imagesToCompose,
+          layout,
+          filter,
+          weddingInfo,
+          guestName,
+          message,
+        });
+        finalUrl = result.dataUrl;
+        setComposedBlob(result.blob);
+        setComposedUrl(result.dataUrl);
+      } catch (err) {
+        console.error('Download composition update error:', err);
+      }
+    }
+
+    if (!finalUrl) return;
     const link = document.createElement('a');
-    link.href = composedUrl;
-    link.download = `namoo-snap-${weddingInfo.title.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase()}-${Date.now()}.jpg`;
+    link.href = finalUrl;
+    link.download = `namoo-snap-${(guestName || 'tamu').replace(/[^a-zA-Z0-9]/g, '-').toLowerCase()}-${Date.now()}.jpg`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -198,6 +240,28 @@ export default function GuestUpload({ onNavigateToGallery }) {
       setIsUploading(true);
       setStatusMessage({ type: '', text: '' });
 
+      // Pastikan blob final yang diupload mengandung nama tamu & ucapan terbaru
+      let uploadBlob = composedBlob;
+      if (rawPhotos.filter(Boolean).length >= totalSlotsNeeded) {
+        const slotsCount = parseInt(layout, 10);
+        const imagesToCompose = rawPhotos.slice(0, slotsCount).map((p) => p.previewUrl);
+        const result = await composePhotoboothImage({
+          images: imagesToCompose,
+          layout,
+          filter,
+          weddingInfo,
+          guestName,
+          message,
+        });
+        uploadBlob = result.blob;
+        setComposedBlob(result.blob);
+        setComposedUrl(result.dataUrl);
+      }
+
+      if (!uploadBlob) {
+        throw new Error('Foto belum siap untuk diunggah.');
+      }
+
       const timestamp = Date.now();
       const randomStr = Math.random().toString(36).substring(2, 8);
       const cleanGuestName = guestName.toLowerCase().replace(/[^a-z0-9]/g, '-').slice(0, 20);
@@ -206,7 +270,7 @@ export default function GuestUpload({ onNavigateToGallery }) {
 
       const { error: storageError } = await supabase.storage
         .from('wedding-photos')
-        .upload(filePath, composedBlob, {
+        .upload(filePath, uploadBlob, {
           contentType: 'image/jpeg',
           cacheControl: '3600',
           upsert: false,
