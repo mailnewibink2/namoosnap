@@ -55,6 +55,7 @@ export default function LiveSlideshow() {
         .from('photos')
         .select('*')
         .eq('is_approved', true)
+        .neq('guest_name', '__NAMOO_SYSTEM_CONFIG__')
         .order('created_at', { ascending: false });
 
       if (error) {
@@ -84,6 +85,9 @@ export default function LiveSlideshow() {
         { event: '*', schema: 'public', table: 'photos' },
         (payload) => {
           const { eventType, new: newRecord, old: oldRecord } = payload;
+          if (newRecord?.guest_name === '__NAMOO_SYSTEM_CONFIG__' || oldRecord?.guest_name === '__NAMOO_SYSTEM_CONFIG__') {
+            return;
+          }
 
           if (eventType === 'INSERT') {
             // Jika foto baru masuk dan langsung approved (atau auto-approved)

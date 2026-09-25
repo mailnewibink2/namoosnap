@@ -61,6 +61,7 @@ export default function AdminModeration() {
       const { data, error } = await supabase
         .from('photos')
         .select('*')
+        .neq('guest_name', '__NAMOO_SYSTEM_CONFIG__')
         .order('created_at', { ascending: false });
 
       if (error) {
@@ -89,6 +90,9 @@ export default function AdminModeration() {
         { event: '*', schema: 'public', table: 'photos' },
         (payload) => {
           const { eventType, new: newRecord, old: oldRecord } = payload;
+          if (newRecord?.guest_name === '__NAMOO_SYSTEM_CONFIG__' || oldRecord?.guest_name === '__NAMOO_SYSTEM_CONFIG__') {
+            return;
+          }
 
           if (eventType === 'INSERT') {
             setPhotos((prev) => [newRecord, ...prev]);

@@ -27,42 +27,64 @@ export async function getWeddingSettings() {
   }
 
   try {
+    // 1. Coba ambil dari tabel wedding_settings
     const { data, error } = await supabase
       .from('wedding_settings')
       .select('title, wedding_date')
       .eq('id', 'current')
       .single();
 
-    if (error || !data) {
-      return cached || DEFAULT_SETTINGS;
+    if (!error && data) {
+      let title = data.title || DEFAULT_SETTINGS.title;
+      let weddingDate = data.wedding_date || DEFAULT_SETTINGS.wedding_date;
+      if (title.includes('Sarah')) {
+        title = DEFAULT_SETTINGS.title;
+        weddingDate = DEFAULT_SETTINGS.wedding_date;
+        supabase.from('wedding_settings').upsert({
+          id: 'current',
+          title: DEFAULT_SETTINGS.title,
+          wedding_date: DEFAULT_SETTINGS.wedding_date,
+          updated_at: new Date().toISOString()
+        }).catch(() => {});
+      }
+
+      const result = { title, wedding_date: weddingDate };
+      try {
+        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(result));
+      } catch (e) {}
+      return result;
     }
 
-    // Jika data di database masih data contoh Sarah & Dimas, migrasikan ke Rahma & Febi
-    let title = data.title || DEFAULT_SETTINGS.title;
-    let weddingDate = data.wedding_date || DEFAULT_SETTINGS.wedding_date;
-    if (title.includes('Sarah')) {
-      title = DEFAULT_SETTINGS.title;
-      weddingDate = DEFAULT_SETTINGS.wedding_date;
-      supabase.from('wedding_settings').upsert({
-        id: 'current',
-        title: DEFAULT_SETTINGS.title,
-        wedding_date: DEFAULT_SETTINGS.wedding_date,
-        updated_at: new Date().toISOString()
-      }).catch(() => {});
+    // 2. Fallback: jika tabel wedding_settings belum dibuat, ambil dari baris sistem config di tabel photos
+    const { data: configPhotos } = await supabase
+      .from('photos')
+      .select('message')
+      .eq('guest_name', '__NAMOO_SYSTEM_CONFIG__')
+      .order('created_at', { ascending: false })
+      .limit(1);
+
+    if (configPhotos && configPhotos.length > 0 && configPhotos[0].message) {
+      try {
+        const parsed = JSON.parse(configPhotos[0].message);
+        let title = parsed.title || DEFAULT_SETTINGS.title;
+        let weddingDate = parsed.wedding_date || DEFAULT_SETTINGS.wedding_date;
+        if (title.includes('Sarah')) {
+          title = DEFAULT_SETTINGS.title;
+          weddingDate = DEFAULT_SETTINGS.wedding_date;
+        }
+        const result = { title, wedding_date: weddingDate };
+        try {
+          localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(result));
+        } catch (e) {}
+        return result;
+      } catch (parseErr) {
+        console.warn('Config photo parse error:', parseErr);
+      }
     }
 
-    const result = {
-      title: title,
-      wedding_date: weddingDate,
-    };
-
-    try {
-      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(result));
-    } catch (e) {}
-
-    return result;
+    return cached || DEFAULT_SETTINGS;
   } catch (err) {
-    console.warn('Could not fetch wedding_settings from DB:', err);
+    console.warn('Could not fetch wedding settings from DB:', err);
     return cached || DEFAULT_SETTINGS;
   }
 }
@@ -82,20 +104,42 @@ export async function saveWeddingSettings(newSettings) {
     return payload;
   }
 
+  // 1. Simpan ke tabel wedding_settings jika ada
   try {
-    const { error } = await supabase
+    await supabase
       .from('wedding_settings')
       .upsert({
         id: 'current',
         ...payload,
         updated_at: new Date().toISOString(),
       });
-
-    if (error) {
-      console.warn('DB upsert error on wedding_settings:', error.message);
-    }
   } catch (err) {
-    console.warn('DB save exception:', err);
+    console.warn('DB upsert notice on wedding_settings:', err);
+  }
+
+  // 2. Selalu simpan juga ke baris config di tabel photos agar sinkron antar-perangkat 100% instan
+  try {
+    const { data: existing } = await supabase
+      .from('photos')
+      .select('id')
+      .eq('guest_name', '__NAMOO_SYSTEM_CONFIG__')
+      .limit(1);
+
+    if (existing && existing.length > 0) {
+      await supabase.from('photos').update({
+        message: JSON.stringify(payload),
+        is_approved: false
+      }).eq('id', existing[0].id);
+    } else {
+      await supabase.from('photos').insert({
+        guest_name: '__NAMOO_SYSTEM_CONFIG__',
+        message: JSON.stringify(payload),
+        image_url: 'https://placeholder.com/system-config',
+        is_approved: false
+      });
+    }
+  } catch (photoErr) {
+    console.warn('Config photo backup error:', photoErr);
   }
 
   return payload;

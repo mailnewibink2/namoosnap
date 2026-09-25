@@ -473,7 +473,7 @@ export default function QRCodeModal({ isOpen, onClose, weddingInfo }) {
                         {couple}
                       </h4>
                       <div style={{ fontSize: '0.78rem', color: '#C49A38', fontWeight: 600 }}>
-                        {weddingInfo?.wedding_date || '24 September 2026'}
+                        {weddingInfo?.wedding_date || '27 September 2026'}
                       </div>
                     </div>
                   );
