@@ -77,33 +77,33 @@ function drawWavyBackgroundLines(ctx, width, height) {
   ctx.restore();
 }
 
-function drawTopWeddingArch(ctx, width, topY, archDepth = 100) {
+function drawTopWeddingArch(ctx, width, archBottom = 112) {
   const centerX = width / 2;
-  const archW = 380;
+  const archW = 410;
 
   ctx.save();
 
-  // Lengkungan atas hijau yang masuk ke area foto
+  // Lengkungan atas hijau yang masuk dari atas kanvas ke area foto
   ctx.fillStyle = '#2e4c25';
   ctx.beginPath();
-  ctx.moveTo(centerX - archW / 2, topY);
+  ctx.moveTo(centerX - archW / 2, 0);
   ctx.bezierCurveTo(
-    centerX - archW / 3, topY + archDepth,
-    centerX + archW / 3, topY + archDepth,
-    centerX + archW / 2, topY
+    centerX - archW / 3, archBottom,
+    centerX + archW / 3, archBottom,
+    centerX + archW / 2, 0
   );
   ctx.closePath();
   ctx.fill();
 
   // Garis lengkung halus
-  ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)';
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.16)';
   ctx.lineWidth = 1.5;
   ctx.beginPath();
-  ctx.moveTo(centerX - archW / 2, topY);
+  ctx.moveTo(centerX - archW / 2, 0);
   ctx.bezierCurveTo(
-    centerX - archW / 3, topY + archDepth,
-    centerX + archW / 3, topY + archDepth,
-    centerX + archW / 2, topY
+    centerX - archW / 3, archBottom,
+    centerX + archW / 3, archBottom,
+    centerX + archW / 2, 0
   );
   ctx.stroke();
 
@@ -112,24 +112,24 @@ function drawTopWeddingArch(ctx, width, topY, archDepth = 100) {
   ctx.textBaseline = 'middle';
   ctx.fillStyle = '#FFFFFF';
   ctx.font = 'italic 22px "Alex Brush", "Playfair Display", cursive, serif';
-  ctx.fillText('The', centerX - 14, topY + 28);
+  ctx.fillText('The', centerX - 14, 36);
 
   // Simbol hati kecil
   ctx.fillStyle = '#FFDE7A';
   ctx.font = '15px serif';
-  ctx.fillText('♥', centerX + 18, topY + 26);
+  ctx.fillText('♥', centerX + 18, 34);
 
-  // Tulisan "Wedding"
+  // Tulisan "Wedding" (proporsional dan berpadu sempurna dalam lengkungan)
   ctx.fillStyle = '#FFFFFF';
-  ctx.font = 'normal 48px "Alex Brush", "Playfair Display", cursive, serif';
-  ctx.fillText('Wedding', centerX, topY + 62);
+  ctx.font = 'normal 50px "Alex Brush", "Playfair Display", cursive, serif';
+  ctx.fillText('Wedding', centerX, 72);
 
   // Garis aksen bawah "Wedding"
   ctx.strokeStyle = 'rgba(255, 255, 255, 0.45)';
   ctx.lineWidth = 1.5;
   ctx.beginPath();
-  ctx.moveTo(centerX - 46, topY + 77);
-  ctx.lineTo(centerX + 46, topY + 77);
+  ctx.moveTo(centerX - 46, 88);
+  ctx.lineTo(centerX + 46, 88);
   ctx.stroke();
 
   ctx.restore();
@@ -162,7 +162,11 @@ export async function composePhotoboothImage({
   // Pastikan web font (Alex Brush, Playfair Display, Cormorant Garamond) sudah terload sebelum menggambar teks
   if (typeof document !== 'undefined' && document.fonts) {
     try {
-      await document.fonts.ready;
+      await Promise.all([
+        document.fonts.load('50px "Alex Brush"'),
+        document.fonts.load('italic 23px "Playfair Display"'),
+        document.fonts.ready,
+      ]);
     } catch {
       // Abaikan jika fonts API gagal
     }
@@ -176,8 +180,8 @@ export async function composePhotoboothImage({
   const CANVAS_WIDTH = 1080;
   const PADDING = 38;
   const GAP = 18;
-  const TOP_MARGIN = 58;
-  const FOOTER_HEIGHT = 280;
+  const TOP_MARGIN = 68;
+  const FOOTER_HEIGHT = 290;
 
   let canvasHeight = 1080;
   let slotWidth = 0;
@@ -270,8 +274,8 @@ export async function composePhotoboothImage({
     ctx.stroke();
   });
 
-  // 4. Lengkungan atas dengan teks "The Wedding"
-  drawTopWeddingArch(ctx, CANVAS_WIDTH, TOP_MARGIN, 100);
+  // 4. Lengkungan atas dengan teks "The Wedding" (proporsional dan rapi)
+  drawTopWeddingArch(ctx, CANVAS_WIDTH, 108);
 
   // 5. Lengkungan bawah melengkung lembut ke atas foto
   ctx.save();
@@ -285,11 +289,11 @@ export async function composePhotoboothImage({
   ctx.fill();
   ctx.restore();
 
-  // 6. Hiasan Bunga (Peony/Mawar Putih) di Pojok Kiri Bawah
+  // 6. Hiasan Bunga (Peony/Mawar Putih) di Pojok Kiri Bawah (diperbesar dan pas di pojok kiri bawah)
   if (flowerImg) {
-    const flowerSize = 230;
-    const flowerX = 28;
-    const flowerY = photoBottomY - 32;
+    const flowerSize = 255;
+    const flowerX = 8;
+    const flowerY = canvasHeight - 264;
     ctx.save();
     ctx.drawImage(flowerImg, flowerX, flowerY, flowerSize, flowerSize);
     ctx.restore();
