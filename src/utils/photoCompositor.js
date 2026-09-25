@@ -1,5 +1,25 @@
-// Utilitas untuk menggabungkan 1, 2, atau 4 foto dengan layout grid, filter, dan wedding watermark frame terintegrasi
+// Utilitas untuk menggabungkan foto photobooth dengan green frame (#2e4c25), ornamen bunga, dan tipografi pernikahan
 import { parseWeddingTitle } from './weddingSettings';
+
+let cachedFlowerImage = null;
+
+function loadFlowerImage() {
+  if (cachedFlowerImage && cachedFlowerImage.complete) {
+    return Promise.resolve(cachedFlowerImage);
+  }
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      cachedFlowerImage = img;
+      resolve(img);
+    };
+    img.onerror = () => {
+      resolve(null);
+    };
+    img.src = '/flower-decor.png';
+  });
+}
 
 function drawWrappedText(ctx, text, x, y, maxWidth, lineHeight, maxLines = 2) {
   if (!text) return;
@@ -36,15 +56,93 @@ function drawWrappedText(ctx, text, x, y, maxWidth, lineHeight, maxLines = 2) {
   });
 }
 
+function drawWavyBackgroundLines(ctx, width, height) {
+  ctx.save();
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.055)';
+  ctx.lineWidth = 1.5;
+
+  for (let x = 18; x < width; x += 36) {
+    ctx.beginPath();
+    ctx.moveTo(x, 0);
+    const waveCount = 12;
+    const waveHeight = height / waveCount;
+    for (let i = 0; i < waveCount; i++) {
+      const cy = i * waveHeight + waveHeight / 2;
+      const ey = (i + 1) * waveHeight;
+      const offset = (i % 2 === 0 ? 5 : -5) * (Math.sin(x * 0.1 + i) > 0 ? 1 : -0.85);
+      ctx.quadraticCurveTo(x + offset, cy, x, ey);
+    }
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function drawTopWeddingArch(ctx, width, topY, archDepth = 100) {
+  const centerX = width / 2;
+  const archW = 380;
+
+  ctx.save();
+
+  // Lengkungan atas hijau yang masuk ke area foto
+  ctx.fillStyle = '#2e4c25';
+  ctx.beginPath();
+  ctx.moveTo(centerX - archW / 2, topY);
+  ctx.bezierCurveTo(
+    centerX - archW / 3, topY + archDepth,
+    centerX + archW / 3, topY + archDepth,
+    centerX + archW / 2, topY
+  );
+  ctx.closePath();
+  ctx.fill();
+
+  // Garis lengkung halus
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(centerX - archW / 2, topY);
+  ctx.bezierCurveTo(
+    centerX - archW / 3, topY + archDepth,
+    centerX + archW / 3, topY + archDepth,
+    centerX + archW / 2, topY
+  );
+  ctx.stroke();
+
+  // Tulisan "The"
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillStyle = '#FFFFFF';
+  ctx.font = 'italic 22px "Alex Brush", "Playfair Display", cursive, serif';
+  ctx.fillText('The', centerX - 14, topY + 28);
+
+  // Simbol hati kecil
+  ctx.fillStyle = '#FFDE7A';
+  ctx.font = '15px serif';
+  ctx.fillText('♥', centerX + 18, topY + 26);
+
+  // Tulisan "Wedding"
+  ctx.fillStyle = '#FFFFFF';
+  ctx.font = 'normal 48px "Alex Brush", "Playfair Display", cursive, serif';
+  ctx.fillText('Wedding', centerX, topY + 62);
+
+  // Garis aksen bawah "Wedding"
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.45)';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(centerX - 46, topY + 77);
+  ctx.lineTo(centerX + 46, topY + 77);
+  ctx.stroke();
+
+  ctx.restore();
+}
+
 export async function composePhotoboothImage({
-  images, // Array of Image elements or Image URLs
-  layout = '1', // '1' | '2' | '4'
-  filter = 'normal', // 'normal' | 'bw' | 'classic'
+  images,
+  layout = '1',
+  filter = 'normal',
   weddingInfo = { title: 'The Wedding of Rahma & Febi', wedding_date: '27 September 2026' },
   guestName = '',
   message = '',
 }) {
-  // Load semua image jika masih berupa URL/Blob
   const loadedImages = await Promise.all(
     images.map((src) => {
       return new Promise((resolve, reject) => {
@@ -61,79 +159,82 @@ export async function composePhotoboothImage({
     })
   );
 
+  // Pastikan web font (Alex Brush, Playfair Display, Cormorant Garamond) sudah terload sebelum menggambar teks
+  if (typeof document !== 'undefined' && document.fonts) {
+    try {
+      await document.fonts.ready;
+    } catch {
+      // Abaikan jika fonts API gagal
+    }
+  }
+
+  const flowerImg = await loadFlowerImage();
+
   const canvas = document.createElement('canvas');
   const ctx = canvas.getContext('2d');
 
-  // Konfigurasi ukuran kanvas photobooth (lebar standar 1080px)
   const CANVAS_WIDTH = 1080;
-  const PADDING = 44;
-  const GAP = 28;
-  const FOOTER_HEIGHT = 240; // Ruang proporsional untuk nama tamu, ucapan, dan format 3-baris wedding
+  const PADDING = 38;
+  const GAP = 18;
+  const TOP_MARGIN = 58;
+  const FOOTER_HEIGHT = 280;
 
   let canvasHeight = 1080;
-
-  // Tentukan dimensi berdasarkan layout
   let slotWidth = 0;
   let slotHeight = 0;
   let slots = [];
+  let photoBottomY = 0;
 
   if (layout === '1') {
-    // 1 Foto Tunggal (Format Portrait)
     slotWidth = CANVAS_WIDTH - PADDING * 2;
-    slotHeight = Math.round(slotWidth * 1.05);
-    canvasHeight = PADDING + slotHeight + FOOTER_HEIGHT + PADDING;
-
-    slots = [{ x: PADDING, y: PADDING, w: slotWidth, h: slotHeight }];
+    slotHeight = Math.round(slotWidth * 1.25);
+    canvasHeight = TOP_MARGIN + slotHeight + FOOTER_HEIGHT + 24;
+    slots = [{ x: PADDING, y: TOP_MARGIN, w: slotWidth, h: slotHeight }];
+    photoBottomY = TOP_MARGIN + slotHeight;
   } else if (layout === '2') {
-    // 2 Foto Vertikal (Photobooth Strip 2 Foto)
     slotWidth = CANVAS_WIDTH - PADDING * 2;
-    slotHeight = Math.round(slotWidth * 0.68);
-    canvasHeight = PADDING + slotHeight * 2 + GAP + FOOTER_HEIGHT + PADDING;
-
+    slotHeight = Math.round(slotWidth * 0.72);
+    canvasHeight = TOP_MARGIN + slotHeight * 2 + GAP + FOOTER_HEIGHT + 24;
     slots = [
-      { x: PADDING, y: PADDING, w: slotWidth, h: slotHeight },
-      { x: PADDING, y: PADDING + slotHeight + GAP, w: slotWidth, h: slotHeight },
+      { x: PADDING, y: TOP_MARGIN, w: slotWidth, h: slotHeight },
+      { x: PADDING, y: TOP_MARGIN + slotHeight + GAP, w: slotWidth, h: slotHeight },
     ];
+    photoBottomY = TOP_MARGIN + slotHeight * 2 + GAP;
   } else {
-    // 4 Foto (2x2 Grid Photobooth Klasik)
     slotWidth = Math.round((CANVAS_WIDTH - PADDING * 2 - GAP) / 2);
-    slotHeight = Math.round(slotWidth * 1.05);
-    canvasHeight = PADDING + slotHeight * 2 + GAP + FOOTER_HEIGHT + PADDING;
-
+    slotHeight = Math.round(slotWidth * 1.16);
+    canvasHeight = TOP_MARGIN + slotHeight * 2 + GAP + FOOTER_HEIGHT + 24;
     slots = [
-      { x: PADDING, y: PADDING, w: slotWidth, h: slotHeight },
-      { x: PADDING + slotWidth + GAP, y: PADDING, w: slotWidth, h: slotHeight },
-      { x: PADDING, y: PADDING + slotHeight + GAP, w: slotWidth, h: slotHeight },
-      { x: PADDING + slotWidth + GAP, y: PADDING + slotHeight + GAP, w: slotWidth, h: slotHeight },
+      { x: PADDING, y: TOP_MARGIN, w: slotWidth, h: slotHeight },
+      { x: PADDING + slotWidth + GAP, y: TOP_MARGIN, w: slotWidth, h: slotHeight },
+      { x: PADDING, y: TOP_MARGIN + slotHeight + GAP, w: slotWidth, h: slotHeight },
+      { x: PADDING + slotWidth + GAP, y: TOP_MARGIN + slotHeight + GAP, w: slotWidth, h: slotHeight },
     ];
+    photoBottomY = TOP_MARGIN + slotHeight * 2 + GAP;
   }
 
   canvas.width = CANVAS_WIDTH;
   canvas.height = canvasHeight;
 
-  // 1. Gambar latar belakang frame (Soft warm ivory / off-white photobooth border)
-  ctx.fillStyle = '#FAF8F4';
+  // 1. Gambar latar belakang hijau tua (#2e4c25) sesuai permintaan user
+  ctx.fillStyle = '#2e4c25';
   ctx.fillRect(0, 0, CANVAS_WIDTH, canvasHeight);
 
-  // Garis tepi tipis elegan di sekeliling frame
-  ctx.strokeStyle = 'rgba(79, 99, 76, 0.18)';
-  ctx.lineWidth = 2;
-  ctx.strokeRect(16, 16, CANVAS_WIDTH - 32, canvasHeight - 32);
+  // 2. Garis vertikal bergelombang halus (organik mirip referensi)
+  drawWavyBackgroundLines(ctx, CANVAS_WIDTH, canvasHeight);
 
-  // 2. Gambar setiap foto ke dalam slot dengan object-fit cover dan filter
+  // 3. Gambar foto ke dalam slot
   slots.forEach((slot, index) => {
     const img = loadedImages[index] || loadedImages[0];
     if (!img) return;
 
     ctx.save();
 
-    // Buat clipping mask rounded corner untuk setiap foto
     ctx.beginPath();
-    const radius = 12;
+    const radius = 10;
     ctx.roundRect(slot.x, slot.y, slot.w, slot.h, radius);
     ctx.clip();
 
-    // Terapkan filter jika ada
     if (filter === 'bw') {
       ctx.filter = 'grayscale(100%) contrast(118%) brightness(104%)';
     } else if (filter === 'classic') {
@@ -142,7 +243,6 @@ export async function composePhotoboothImage({
       ctx.filter = 'none';
     }
 
-    // Object-fit 'cover' matematika
     const imgRatio = img.width / img.height;
     const slotRatio = slot.w / slot.h;
     let sWidth, sHeight, sx, sy;
@@ -160,24 +260,43 @@ export async function composePhotoboothImage({
     }
 
     ctx.drawImage(img, sx, sy, sWidth, sHeight, slot.x, slot.y, slot.w, slot.h);
-
     ctx.restore();
 
-    // Border halus di sekitar slot foto
-    ctx.strokeStyle = 'rgba(43, 58, 40, 0.2)';
-    ctx.lineWidth = 1.5;
+    // Garis tepi halus pada foto
+    ctx.strokeStyle = 'rgba(0, 0, 0, 0.25)';
+    ctx.lineWidth = 1;
     ctx.beginPath();
     ctx.roundRect(slot.x, slot.y, slot.w, slot.h, radius);
     ctx.stroke();
   });
 
-  // 3. Render Footer Frame
-  // Sesuai permintaan user:
-  // Format di foto: Nama Tamu & Ucapan di atas, lalu di bawahnya:
-  // (Baris 1) The Wedding of
-  // (Baris 2) Rahma & Febi
-  // (Baris 3) Tanggal Acara
-  const footerTop = canvasHeight - PADDING - FOOTER_HEIGHT;
+  // 4. Lengkungan atas dengan teks "The Wedding"
+  drawTopWeddingArch(ctx, CANVAS_WIDTH, TOP_MARGIN, 100);
+
+  // 5. Lengkungan bawah melengkung lembut ke atas foto
+  ctx.save();
+  ctx.fillStyle = '#2e4c25';
+  ctx.beginPath();
+  ctx.moveTo(PADDING - 8, photoBottomY);
+  ctx.quadraticCurveTo(CANVAS_WIDTH / 2, photoBottomY - 26, CANVAS_WIDTH - PADDING + 8, photoBottomY);
+  ctx.lineTo(CANVAS_WIDTH, canvasHeight);
+  ctx.lineTo(0, canvasHeight);
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+
+  // 6. Hiasan Bunga (Peony/Mawar Putih) di Pojok Kiri Bawah
+  if (flowerImg) {
+    const flowerSize = 230;
+    const flowerX = 28;
+    const flowerY = photoBottomY - 32;
+    ctx.save();
+    ctx.drawImage(flowerImg, flowerX, flowerY, flowerSize, flowerSize);
+    ctx.restore();
+  }
+
+  // 7. Render Teks Footer Pernikahan
+  const footerContentTop = photoBottomY + 28;
   const centerX = CANVAS_WIDTH / 2;
 
   ctx.textAlign = 'center';
@@ -185,99 +304,49 @@ export async function composePhotoboothImage({
 
   const cleanName = guestName.trim();
   const cleanMessage = message.trim();
-  const { prefix, couple } = parseWeddingTitle(weddingInfo.title);
+  const { couple } = parseWeddingTitle(weddingInfo.title);
 
-  if (cleanName || cleanMessage) {
-    // === SKENARIO 1: NAMA TAMU & UCAPAN ADA DI ATAS ===
-    if (cleanName && cleanMessage) {
-      // Ada Nama Tamu & Ucapan
-      ctx.fillStyle = '#2B3A28';
-      ctx.font = 'bold 26px "Playfair Display", Georgia, serif';
-      ctx.fillText(`Dari: ${cleanName}`, centerX, footerTop + 26);
+  // Baris 1: Nama Pengantin (Putih Bersih & Cursive Kaligrafi Elegan)
+  ctx.fillStyle = '#FFFFFF';
+  ctx.font = 'normal 56px "Alex Brush", "Playfair Display", cursive, serif';
+  ctx.fillText(couple, centerX, footerContentTop + 24);
 
-      ctx.fillStyle = '#556353';
-      ctx.font = 'italic 20px "Playfair Display", Georgia, serif';
-      drawWrappedText(ctx, `"${cleanMessage}"`, centerX, footerTop + 58, 920, 26, 2);
-    } else if (cleanName) {
-      // Hanya ada Nama Tamu
-      ctx.fillStyle = '#2B3A28';
-      ctx.font = 'bold 28px "Playfair Display", Georgia, serif';
-      ctx.fillText(`Dari: ${cleanName}`, centerX, footerTop + 42);
-    } else {
-      // Hanya ada Ucapan
-      ctx.fillStyle = '#556353';
-      ctx.font = 'italic 22px "Playfair Display", Georgia, serif';
-      drawWrappedText(ctx, `"${cleanMessage}"`, centerX, footerTop + 42, 920, 26, 2);
+  // Baris 2: Tanggal Pernikahan (Warm Ivory)
+  ctx.fillStyle = '#F4EFE6';
+  ctx.font = '500 22px "Cormorant Garamond", Georgia, serif';
+  ctx.fillText(weddingInfo.wedding_date || '27 September 2026', centerX, footerContentTop + 68);
+
+  if (cleanMessage) {
+    // Ucapan Tamu (Warna Emas Hangat #FFDE7A agar kontras dan sangat terbaca)
+    ctx.fillStyle = '#FFDE7A';
+    ctx.font = 'italic 23px "Playfair Display", Georgia, serif';
+    drawWrappedText(ctx, `"${cleanMessage}"`, centerX, footerContentTop + 120, 780, 30, 2);
+
+    // Nama Tamu
+    if (cleanName) {
+      ctx.fillStyle = '#FFFFFF';
+      ctx.font = '500 21px "Cormorant Garamond", "Plus Jakarta Sans", sans-serif';
+      ctx.fillText(`-${cleanName}-`, centerX, footerContentTop + 162);
     }
+  } else if (cleanName) {
+    // Hanya Nama Tamu
+    ctx.fillStyle = '#FFDE7A';
+    ctx.font = 'italic 22px "Playfair Display", Georgia, serif';
+    ctx.fillText('Terima kasih atas doa & kehadirannya', centerX, footerContentTop + 116);
 
-    // Garis Pembatas Halus dengan Ornamen Tengah
-    const dividerY = footerTop + 98;
-    ctx.strokeStyle = 'rgba(196, 154, 56, 0.35)';
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(centerX - 170, dividerY);
-    ctx.lineTo(centerX - 18, dividerY);
-    ctx.moveTo(centerX + 18, dividerY);
-    ctx.lineTo(centerX + 170, dividerY);
-    ctx.stroke();
-
-    ctx.fillStyle = '#C49A38';
-    ctx.font = '13px serif';
-    ctx.fillText('❦', centerX, dividerY);
-
-    // === FORMAT 3 BARIS DI BAWAH NAMA DAN UCAPAN ===
-    // Baris 1: The Wedding of
-    ctx.fillStyle = '#768772';
-    ctx.font = 'italic 19px "Playfair Display", Georgia, serif';
-    ctx.fillText(prefix, centerX, footerTop + 126);
-
-    // Baris 2: Nama Pengantin (Besar & Elegan)
-    ctx.fillStyle = '#283625';
-    ctx.font = 'bold 31px "Playfair Display", Georgia, serif';
-    ctx.fillText(couple, centerX, footerTop + 158);
-
-    // Baris 3: Tanggal Pernikahan
-    ctx.fillStyle = '#C49A38';
-    ctx.font = '600 17px "Inter", "Plus Jakarta Sans", sans-serif';
-    ctx.fillText(weddingInfo.wedding_date || '', centerX, footerTop + 192);
-
+    ctx.fillStyle = '#FFFFFF';
+    ctx.font = '500 21px "Cormorant Garamond", "Plus Jakarta Sans", sans-serif';
+    ctx.fillText(`-${cleanName}-`, centerX, footerContentTop + 154);
   } else {
-    // === SKENARIO 2: BELUM DIISI NAMA (STATE SAAT BARU AMBIL FOTO) ===
-    // Tampilkan format 3-baris wedding di tengah dengan elegan
-    ctx.fillStyle = '#768772';
-    ctx.font = 'italic 20px "Playfair Display", Georgia, serif';
-    ctx.fillText(prefix, centerX, footerTop + 46);
-
-    ctx.fillStyle = '#283625';
-    ctx.font = 'bold 34px "Playfair Display", Georgia, serif';
-    ctx.fillText(couple, centerX, footerTop + 84);
-
-    ctx.fillStyle = '#C49A38';
-    ctx.font = '600 18px "Inter", "Plus Jakarta Sans", sans-serif';
-    ctx.fillText(weddingInfo.wedding_date || '', centerX, footerTop + 122);
-
-    const dividerY = footerTop + 152;
-    ctx.strokeStyle = 'rgba(196, 154, 56, 0.35)';
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(centerX - 160, dividerY);
-    ctx.lineTo(centerX - 18, dividerY);
-    ctx.moveTo(centerX + 18, dividerY);
-    ctx.lineTo(centerX + 160, dividerY);
-    ctx.stroke();
-
-    ctx.fillStyle = '#C49A38';
-    ctx.font = '13px serif';
-    ctx.fillText('❦', centerX, dividerY);
-
-    ctx.fillStyle = '#899986';
-    ctx.font = 'italic 17px "Playfair Display", Georgia, serif';
-    ctx.fillText('Abadikan Momen Hangat & Penuh Kebahagiaan', centerX, footerTop + 182);
+    // State Default Sebelum Tamu Mengetik
+    ctx.fillStyle = '#FFDE7A';
+    ctx.font = 'italic 21px "Playfair Display", Georgia, serif';
+    ctx.fillText('Abadikan Momen Hangat & Penuh Kebahagiaan', centerX, footerContentTop + 124);
   }
 
   // Branding kecil Namoo Snap di paling bawah
-  ctx.fillStyle = '#A2B3A0';
-  ctx.font = '600 11px "Inter", "Plus Jakarta Sans", sans-serif';
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+  ctx.font = '600 12px "Plus Jakarta Sans", sans-serif';
   ctx.fillText('NAMOO SNAP • DIGITAL PHOTOBOOTH', centerX, canvasHeight - 16);
 
   return new Promise((resolve, reject) => {
@@ -295,7 +364,7 @@ export async function composePhotoboothImage({
         });
       },
       'image/jpeg',
-      0.88
+      0.92
     );
   });
 }

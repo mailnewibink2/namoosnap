@@ -906,11 +906,11 @@ export default function GuestUpload({ onNavigateToGallery, weddingInfo: propWedd
               <div style={{ marginBottom: '1.6rem' }}>
                 <div 
                   style={{
-                    backgroundColor: '#FAF8F4',
+                    backgroundColor: '#2e4c25',
                     borderRadius: '14px',
-                    border: '1.5px solid #d8e0d6',
-                    padding: '8px',
-                    boxShadow: '0 8px 24px rgba(43, 58, 40, 0.12)',
+                    border: '1.5px solid rgba(46, 76, 37, 0.4)',
+                    padding: '6px',
+                    boxShadow: '0 8px 24px rgba(46, 76, 37, 0.22)',
                     position: 'relative',
                     overflow: 'hidden'
                   }}
