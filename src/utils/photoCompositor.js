@@ -77,64 +77,6 @@ function drawWavyBackgroundLines(ctx, width, height) {
   ctx.restore();
 }
 
-function drawTopWeddingArch(ctx, width, archBottom = 112) {
-  const centerX = width / 2;
-  const archW = 410;
-
-  ctx.save();
-
-  // Lengkungan atas hijau yang masuk dari atas kanvas ke area foto
-  ctx.fillStyle = '#2e4c25';
-  ctx.beginPath();
-  ctx.moveTo(centerX - archW / 2, 0);
-  ctx.bezierCurveTo(
-    centerX - archW / 3, archBottom,
-    centerX + archW / 3, archBottom,
-    centerX + archW / 2, 0
-  );
-  ctx.closePath();
-  ctx.fill();
-
-  // Garis lengkung halus
-  ctx.strokeStyle = 'rgba(255, 255, 255, 0.16)';
-  ctx.lineWidth = 1.5;
-  ctx.beginPath();
-  ctx.moveTo(centerX - archW / 2, 0);
-  ctx.bezierCurveTo(
-    centerX - archW / 3, archBottom,
-    centerX + archW / 3, archBottom,
-    centerX + archW / 2, 0
-  );
-  ctx.stroke();
-
-  // Tulisan "The"
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.fillStyle = '#FFFFFF';
-  ctx.font = 'italic 22px "Alex Brush", "Playfair Display", cursive, serif';
-  ctx.fillText('The', centerX - 14, 36);
-
-  // Simbol hati kecil
-  ctx.fillStyle = '#FFDE7A';
-  ctx.font = '15px serif';
-  ctx.fillText('♥', centerX + 18, 34);
-
-  // Tulisan "Wedding" (proporsional dan berpadu sempurna dalam lengkungan)
-  ctx.fillStyle = '#FFFFFF';
-  ctx.font = 'normal 50px "Alex Brush", "Playfair Display", cursive, serif';
-  ctx.fillText('Wedding', centerX, 72);
-
-  // Garis aksen bawah "Wedding"
-  ctx.strokeStyle = 'rgba(255, 255, 255, 0.45)';
-  ctx.lineWidth = 1.5;
-  ctx.beginPath();
-  ctx.moveTo(centerX - 46, 88);
-  ctx.lineTo(centerX + 46, 88);
-  ctx.stroke();
-
-  ctx.restore();
-}
-
 export async function composePhotoboothImage({
   images,
   layout = '1',
@@ -159,12 +101,13 @@ export async function composePhotoboothImage({
     })
   );
 
-  // Pastikan web font (Alex Brush, Playfair Display, Cormorant Garamond) sudah terload sebelum menggambar teks
+  // Pastikan web font sudah terload sebelum menggambar teks kanvas
   if (typeof document !== 'undefined' && document.fonts) {
     try {
       await Promise.all([
         document.fonts.load('50px "Alex Brush"'),
         document.fonts.load('italic 23px "Playfair Display"'),
+        document.fonts.load('500 20px "Cormorant Garamond"'),
         document.fonts.ready,
       ]);
     } catch {
@@ -180,8 +123,8 @@ export async function composePhotoboothImage({
   const CANVAS_WIDTH = 1080;
   const PADDING = 38;
   const GAP = 18;
-  const TOP_MARGIN = 68;
-  const FOOTER_HEIGHT = 290;
+  const TOP_MARGIN = 38; // Tepi atas foto lurus dengan margin yang proporsional
+  const FOOTER_HEIGHT = 275;
 
   let canvasHeight = 1080;
   let slotWidth = 0;
@@ -220,14 +163,14 @@ export async function composePhotoboothImage({
   canvas.width = CANVAS_WIDTH;
   canvas.height = canvasHeight;
 
-  // 1. Gambar latar belakang hijau tua (#2e4c25) sesuai permintaan user
+  // 1. Gambar latar belakang hijau tua (#2e4c25)
   ctx.fillStyle = '#2e4c25';
   ctx.fillRect(0, 0, CANVAS_WIDTH, canvasHeight);
 
-  // 2. Garis vertikal bergelombang halus (organik mirip referensi)
+  // 2. Garis vertikal bergelombang halus (organik)
   drawWavyBackgroundLines(ctx, CANVAS_WIDTH, canvasHeight);
 
-  // 3. Gambar foto ke dalam slot
+  // 3. Gambar foto ke dalam slot (tepi lurus & sudut rounded bersih, tidak ada yang menutupi)
   slots.forEach((slot, index) => {
     const img = loadedImages[index] || loadedImages[0];
     if (!img) return;
@@ -274,33 +217,18 @@ export async function composePhotoboothImage({
     ctx.stroke();
   });
 
-  // 4. Lengkungan atas dengan teks "The Wedding" (proporsional dan rapi)
-  drawTopWeddingArch(ctx, CANVAS_WIDTH, 108);
-
-  // 5. Lengkungan bawah melengkung lembut ke atas foto
-  ctx.save();
-  ctx.fillStyle = '#2e4c25';
-  ctx.beginPath();
-  ctx.moveTo(PADDING - 8, photoBottomY);
-  ctx.quadraticCurveTo(CANVAS_WIDTH / 2, photoBottomY - 26, CANVAS_WIDTH - PADDING + 8, photoBottomY);
-  ctx.lineTo(CANVAS_WIDTH, canvasHeight);
-  ctx.lineTo(0, canvasHeight);
-  ctx.closePath();
-  ctx.fill();
-  ctx.restore();
-
-  // 6. Hiasan Bunga (Peony/Mawar Putih) di Pojok Kiri Bawah (diperbesar dan pas di pojok kiri bawah)
+  // 4. Hiasan Bunga di Pojok Kiri Bawah
   if (flowerImg) {
-    const flowerSize = 255;
+    const flowerSize = 250;
     const flowerX = 8;
-    const flowerY = canvasHeight - 264;
+    const flowerY = canvasHeight - 260;
     ctx.save();
     ctx.drawImage(flowerImg, flowerX, flowerY, flowerSize, flowerSize);
     ctx.restore();
   }
 
-  // 7. Render Teks Footer Pernikahan
-  const footerContentTop = photoBottomY + 28;
+  // 5. Render Teks Footer Pernikahan
+  const footerContentTop = photoBottomY + 26;
   const centerX = CANVAS_WIDTH / 2;
 
   ctx.textAlign = 'center';
@@ -308,44 +236,49 @@ export async function composePhotoboothImage({
 
   const cleanName = guestName.trim();
   const cleanMessage = message.trim();
-  const { couple } = parseWeddingTitle(weddingInfo.title);
+  const { prefix, couple } = parseWeddingTitle(weddingInfo.title);
 
-  // Baris 1: Nama Pengantin (Putih Bersih & Cursive Kaligrafi Elegan)
+  // Baris 1: "The Wedding of" (di bawah foto, di atas Rahma & Febi, font sama seperti nama tamu)
+  ctx.fillStyle = '#E8EFE5';
+  ctx.font = 'italic 500 20px "Cormorant Garamond", "Plus Jakarta Sans", sans-serif';
+  ctx.fillText(prefix || 'The Wedding of', centerX, footerContentTop + 14);
+
+  // Baris 2: Nama Pengantin ("Rahma & Febi" dengan font cursive kaligrafi elegan)
   ctx.fillStyle = '#FFFFFF';
   ctx.font = 'normal 56px "Alex Brush", "Playfair Display", cursive, serif';
-  ctx.fillText(couple, centerX, footerContentTop + 24);
+  ctx.fillText(couple, centerX, footerContentTop + 54);
 
-  // Baris 2: Tanggal Pernikahan (Warm Ivory)
+  // Baris 3: Tanggal Pernikahan
   ctx.fillStyle = '#F4EFE6';
-  ctx.font = '500 22px "Cormorant Garamond", Georgia, serif';
-  ctx.fillText(weddingInfo.wedding_date || '27 September 2026', centerX, footerContentTop + 68);
+  ctx.font = '500 20px "Cormorant Garamond", Georgia, serif';
+  ctx.fillText(weddingInfo.wedding_date || '27 September 2026', centerX, footerContentTop + 95);
 
   if (cleanMessage) {
-    // Ucapan Tamu (Warna Emas Hangat #FFDE7A agar kontras dan sangat terbaca)
+    // Ucapan Tamu (Warna Emas Hangat #FFDE7A)
     ctx.fillStyle = '#FFDE7A';
-    ctx.font = 'italic 23px "Playfair Display", Georgia, serif';
-    drawWrappedText(ctx, `"${cleanMessage}"`, centerX, footerContentTop + 120, 780, 30, 2);
+    ctx.font = 'italic 22px "Playfair Display", Georgia, serif';
+    drawWrappedText(ctx, `"${cleanMessage}"`, centerX, footerContentTop + 140, 780, 28, 2);
 
     // Nama Tamu
     if (cleanName) {
       ctx.fillStyle = '#FFFFFF';
-      ctx.font = '500 21px "Cormorant Garamond", "Plus Jakarta Sans", sans-serif';
-      ctx.fillText(`-${cleanName}-`, centerX, footerContentTop + 162);
+      ctx.font = '500 20px "Cormorant Garamond", "Plus Jakarta Sans", sans-serif';
+      ctx.fillText(`-${cleanName}-`, centerX, footerContentTop + 182);
     }
   } else if (cleanName) {
     // Hanya Nama Tamu
     ctx.fillStyle = '#FFDE7A';
-    ctx.font = 'italic 22px "Playfair Display", Georgia, serif';
-    ctx.fillText('Terima kasih atas doa & kehadirannya', centerX, footerContentTop + 116);
+    ctx.font = 'italic 21px "Playfair Display", Georgia, serif';
+    ctx.fillText('Terima kasih atas doa & kehadirannya', centerX, footerContentTop + 138);
 
     ctx.fillStyle = '#FFFFFF';
-    ctx.font = '500 21px "Cormorant Garamond", "Plus Jakarta Sans", sans-serif';
-    ctx.fillText(`-${cleanName}-`, centerX, footerContentTop + 154);
+    ctx.font = '500 20px "Cormorant Garamond", "Plus Jakarta Sans", sans-serif';
+    ctx.fillText(`-${cleanName}-`, centerX, footerContentTop + 174);
   } else {
     // State Default Sebelum Tamu Mengetik
     ctx.fillStyle = '#FFDE7A';
-    ctx.font = 'italic 21px "Playfair Display", Georgia, serif';
-    ctx.fillText('Abadikan Momen Hangat & Penuh Kebahagiaan', centerX, footerContentTop + 124);
+    ctx.font = 'italic 20px "Playfair Display", Georgia, serif';
+    ctx.fillText('Abadikan Momen Hangat & Penuh Kebahagiaan', centerX, footerContentTop + 140);
   }
 
   // Branding kecil Namoo Snap di paling bawah
