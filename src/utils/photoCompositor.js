@@ -40,7 +40,7 @@ export async function composePhotoboothImage({
   images, // Array of Image elements or Image URLs
   layout = '1', // '1' | '2' | '4'
   filter = 'normal', // 'normal' | 'bw' | 'classic'
-  weddingInfo = { title: 'The Wedding of Sarah & Dimas', wedding_date: '24 September 2026' },
+  weddingInfo = { title: 'The Wedding of Rahma & Febi', wedding_date: '27 September 2026' },
   guestName = '',
   message = '',
 }) {

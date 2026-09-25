@@ -13,7 +13,10 @@ export default function App() {
   });
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [showQrModal, setShowQrModal] = useState(false);
-  const [weddingInfo, setWeddingInfo] = useState({ title: '', wedding_date: '' });
+  const [weddingInfo, setWeddingInfo] = useState({ 
+    title: 'The Wedding of Rahma & Febi', 
+    wedding_date: '27 September 2026' 
+  });
   const [passwordInput, setPasswordInput] = useState('');
   const [passwordError, setPasswordError] = useState('');
 
@@ -21,6 +24,13 @@ export default function App() {
     getWeddingSettings().then((res) => {
       if (res) setWeddingInfo(res);
     });
+
+    const handleSettingsChanged = (e) => {
+      if (e.detail) setWeddingInfo(e.detail);
+    };
+
+    window.addEventListener('namoo_wedding_settings_changed', handleSettingsChanged);
+    return () => window.removeEventListener('namoo_wedding_settings_changed', handleSettingsChanged);
   }, []);
 
   // Password yang sah (bisa diset di .env atau default 'namoo123' / '1234')
@@ -130,7 +140,10 @@ export default function App() {
             </button>
           </div>
 
-          <GuestUpload onNavigateToGallery={() => setActiveTab('slideshow')} />
+          <GuestUpload 
+            onNavigateToGallery={() => setActiveTab('slideshow')} 
+            weddingInfo={weddingInfo} 
+          />
         </div>
       ) : (
         /* Halaman Slideshow Proyektor atau Dashboard Moderasi WO */

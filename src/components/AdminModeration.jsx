@@ -29,7 +29,7 @@ export default function AdminModeration() {
   const [notification, setNotification] = useState({ text: '', type: '' });
   
   // Pengaturan Nama Pengantin & Tanggal Acara
-  const [weddingInfo, setWeddingInfo] = useState({ title: '', wedding_date: '' });
+  const [weddingInfo, setWeddingInfo] = useState({ title: 'The Wedding of Rahma & Febi', wedding_date: '27 September 2026' });
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [showQrModal, setShowQrModal] = useState(false);
   const [isSavingSettings, setIsSavingSettings] = useState(false);
@@ -744,7 +744,7 @@ export default function AdminModeration() {
                 </label>
                 <input 
                   type="text"
-                  placeholder="Contoh: The Wedding of Sarah & Dimas"
+                  placeholder="Contoh: The Wedding of Rahma & Febi"
                   value={weddingInfo.title}
                   onChange={(e) => setWeddingInfo({ ...weddingInfo, title: e.target.value })}
                   required
@@ -768,7 +768,7 @@ export default function AdminModeration() {
                 </label>
                 <input 
                   type="text"
-                  placeholder="Contoh: 24 September 2026"
+                  placeholder="Contoh: 27 September 2026"
                   value={weddingInfo.wedding_date}
                   onChange={(e) => setWeddingInfo({ ...weddingInfo, wedding_date: e.target.value })}
                   required
@@ -801,10 +801,10 @@ export default function AdminModeration() {
                   Pratinjau Watermark Foto:
                 </div>
                 <div style={{ fontFamily: 'var(--font-serif)', fontSize: '1.2rem', fontWeight: 700, color: '#2B3A28', marginTop: '4px' }}>
-                  {weddingInfo.title || 'The Wedding of Sarah & Dimas'}
+                  {weddingInfo.title || 'The Wedding of Rahma & Febi'}
                 </div>
                 <div style={{ fontSize: '0.78rem', color: '#6E7C6C', marginTop: '2px' }}>
-                  {weddingInfo.wedding_date || '24 September 2026'}
+                  {weddingInfo.wedding_date || '27 September 2026'}
                 </div>
               </div>
 

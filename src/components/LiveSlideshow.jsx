@@ -26,7 +26,10 @@ export default function LiveSlideshow() {
   const [isLoading, setIsLoading] = useState(true);
   const [newPhotoAlert, setNewPhotoAlert] = useState(null);
   const [showQrModal, setShowQrModal] = useState(false);
-  const [weddingInfo, setWeddingInfo] = useState({ title: '', wedding_date: '' });
+  const [weddingInfo, setWeddingInfo] = useState({ 
+    title: 'The Wedding of Rahma & Febi', 
+    wedding_date: '27 September 2026' 
+  });
 
   const containerRef = useRef(null);
   const timerRef = useRef(null);
@@ -35,6 +38,13 @@ export default function LiveSlideshow() {
     getWeddingSettings().then((res) => {
       if (res) setWeddingInfo(res);
     });
+
+    const handleSettingsChanged = (e) => {
+      if (e.detail) setWeddingInfo(e.detail);
+    };
+
+    window.addEventListener('namoo_wedding_settings_changed', handleSettingsChanged);
+    return () => window.removeEventListener('namoo_wedding_settings_changed', handleSettingsChanged);
   }, []);
 
   // 1. Ambil data foto yang sudah disetujui (is_approved = true)

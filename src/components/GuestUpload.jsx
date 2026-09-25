@@ -17,7 +17,7 @@ import {
   Image as ImageIcon
 } from 'lucide-react';
 
-export default function GuestUpload({ onNavigateToGallery }) {
+export default function GuestUpload({ onNavigateToGallery, weddingInfo: propWeddingInfo }) {
   const [guestName, setGuestName] = useState('');
   const [message, setMessage] = useState('');
   
@@ -33,10 +33,18 @@ export default function GuestUpload({ onNavigateToGallery }) {
   const [isComposing, setIsComposing] = useState(false);
 
   // Wedding Settings (Judul & Tanggal)
-  const [weddingInfo, setWeddingInfo] = useState({
-    title: 'The Wedding of Sarah & Dimas',
-    wedding_date: '24 September 2026',
+  const [weddingInfo, setWeddingInfo] = useState(() => {
+    return propWeddingInfo || {
+      title: 'The Wedding of Rahma & Febi',
+      wedding_date: '27 September 2026',
+    };
   });
+
+  useEffect(() => {
+    if (propWeddingInfo && propWeddingInfo.title) {
+      setWeddingInfo(propWeddingInfo);
+    }
+  }, [propWeddingInfo]);
 
   const [isUploading, setIsUploading] = useState(false);
   const [statusMessage, setStatusMessage] = useState({ type: '', text: '' });
@@ -46,11 +54,18 @@ export default function GuestUpload({ onNavigateToGallery }) {
   const fileInputCameraRef = useRef(null);
   const fileInputGalleryRef = useRef(null);
 
-  // Muat pengaturan nama pengantin & tanggal
+  // Muat pengaturan nama pengantin & tanggal serta dengarkan pembaruan real-time
   useEffect(() => {
     getWeddingSettings().then((info) => {
       if (info) setWeddingInfo(info);
     });
+
+    const handleSettingsChanged = (e) => {
+      if (e.detail) setWeddingInfo(e.detail);
+    };
+
+    window.addEventListener('namoo_wedding_settings_changed', handleSettingsChanged);
+    return () => window.removeEventListener('namoo_wedding_settings_changed', handleSettingsChanged);
   }, []);
 
   const totalSlotsNeeded = parseInt(layout, 10);
