@@ -17,7 +17,7 @@ function loadFlowerImage() {
     img.onerror = () => {
       resolve(null);
     };
-    img.src = '/flower-decor.png';
+    img.src = '/flower-decor.png?v=2';
   });
 }
 
@@ -124,7 +124,7 @@ export async function composePhotoboothImage({
   const PADDING = 38;
   const GAP = 18;
   const TOP_MARGIN = 38; // Tepi atas foto lurus dengan margin yang proporsional
-  const FOOTER_HEIGHT = 275;
+  const FOOTER_HEIGHT = 295;
 
   let canvasHeight = 1080;
   let slotWidth = 0;
@@ -228,7 +228,7 @@ export async function composePhotoboothImage({
   }
 
   // 5. Render Teks Footer Pernikahan
-  const footerContentTop = photoBottomY + 26;
+  const footerContentTop = photoBottomY + 22;
   const centerX = CANVAS_WIDTH / 2;
 
   ctx.textAlign = 'center';
@@ -238,47 +238,47 @@ export async function composePhotoboothImage({
   const cleanMessage = message.trim();
   const { prefix, couple } = parseWeddingTitle(weddingInfo.title);
 
-  // Baris 1: "The Wedding of" (di bawah foto, di atas Rahma & Febi, font sama seperti nama tamu)
+  // Baris 1: "The Wedding of" (di bawah foto, di atas Rahma & Febi dengan jarak yang lega)
   ctx.fillStyle = '#E8EFE5';
-  ctx.font = 'italic 500 20px "Cormorant Garamond", "Plus Jakarta Sans", sans-serif';
-  ctx.fillText(prefix || 'The Wedding of', centerX, footerContentTop + 14);
+  ctx.font = '500 19px "Cormorant Garamond", "Plus Jakarta Sans", sans-serif';
+  ctx.fillText(prefix || 'The Wedding of', centerX, footerContentTop + 16);
 
-  // Baris 2: Nama Pengantin ("Rahma & Febi" dengan font cursive kaligrafi elegan)
+  // Baris 2: Nama Pengantin ("Rahma & Febi" dengan font cursive kaligrafi elegan, tidak tertabrak)
   ctx.fillStyle = '#FFFFFF';
-  ctx.font = 'normal 56px "Alex Brush", "Playfair Display", cursive, serif';
-  ctx.fillText(couple, centerX, footerContentTop + 54);
+  ctx.font = 'normal 54px "Alex Brush", "Playfair Display", cursive, serif';
+  ctx.fillText(couple, centerX, footerContentTop + 68);
 
   // Baris 3: Tanggal Pernikahan
   ctx.fillStyle = '#F4EFE6';
   ctx.font = '500 20px "Cormorant Garamond", Georgia, serif';
-  ctx.fillText(weddingInfo.wedding_date || '27 September 2026', centerX, footerContentTop + 95);
+  ctx.fillText(weddingInfo.wedding_date || '27 September 2026', centerX, footerContentTop + 114);
 
   if (cleanMessage) {
     // Ucapan Tamu (Warna Emas Hangat #FFDE7A)
     ctx.fillStyle = '#FFDE7A';
     ctx.font = 'italic 22px "Playfair Display", Georgia, serif';
-    drawWrappedText(ctx, `"${cleanMessage}"`, centerX, footerContentTop + 140, 780, 28, 2);
+    drawWrappedText(ctx, `"${cleanMessage}"`, centerX, footerContentTop + 160, 780, 28, 2);
 
     // Nama Tamu
     if (cleanName) {
       ctx.fillStyle = '#FFFFFF';
       ctx.font = '500 20px "Cormorant Garamond", "Plus Jakarta Sans", sans-serif';
-      ctx.fillText(`-${cleanName}-`, centerX, footerContentTop + 182);
+      ctx.fillText(`-${cleanName}-`, centerX, footerContentTop + 204);
     }
   } else if (cleanName) {
     // Hanya Nama Tamu
     ctx.fillStyle = '#FFDE7A';
     ctx.font = 'italic 21px "Playfair Display", Georgia, serif';
-    ctx.fillText('Terima kasih atas doa & kehadirannya', centerX, footerContentTop + 138);
+    ctx.fillText('Terima kasih atas doa & kehadirannya', centerX, footerContentTop + 158);
 
     ctx.fillStyle = '#FFFFFF';
     ctx.font = '500 20px "Cormorant Garamond", "Plus Jakarta Sans", sans-serif';
-    ctx.fillText(`-${cleanName}-`, centerX, footerContentTop + 174);
+    ctx.fillText(`-${cleanName}-`, centerX, footerContentTop + 196);
   } else {
     // State Default Sebelum Tamu Mengetik
     ctx.fillStyle = '#FFDE7A';
     ctx.font = 'italic 20px "Playfair Display", Georgia, serif';
-    ctx.fillText('Abadikan Momen Hangat & Penuh Kebahagiaan', centerX, footerContentTop + 140);
+    ctx.fillText('Abadikan Momen Hangat & Penuh Kebahagiaan', centerX, footerContentTop + 160);
   }
 
   // Branding kecil Namoo Snap di paling bawah
