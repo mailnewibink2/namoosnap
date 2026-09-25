@@ -138,46 +138,38 @@ export default function QRCodeModal({ isOpen, onClose, weddingInfo }) {
         ctx.fillText('DIGITAL PHOTO BOOTH', width / 2, 205);
       }
 
-      // Garis Pembatas
-      ctx.strokeStyle = '#C49A38';
-      ctx.lineWidth = 1.5;
-      ctx.beginPath();
-      ctx.moveTo(width / 2 - 130, 275);
-      ctx.lineTo(width / 2 + 130, 275);
-      ctx.stroke();
-
-      // 5. Nama Pengantin & Tanggal (Format 3 Baris Rapi & Elegan)
+      // 5. Nama Pengantin & Tanggal (Format 3 Baris Sesuai Home)
       const { prefix, couple } = parseWeddingTitle(weddingInfo?.title);
 
       // Baris 1: The Wedding of
       ctx.textAlign = 'center';
-      ctx.fillStyle = '#657362';
-      ctx.font = 'italic 32px "Playfair Display", Georgia, serif';
-      ctx.fillText(prefix, width / 2, 330);
+      ctx.fillStyle = '#768772';
+      ctx.font = 'italic 34px "Cormorant Garamond", Georgia, serif';
+      ctx.fillText(prefix, width / 2, 315);
 
       // Baris 2: Nama Pasangan (Auto-scaling agar tidak pernah terpotong)
       ctx.fillStyle = '#283625';
-      let coupleFontSize = 54;
-      ctx.font = `bold ${coupleFontSize}px "Playfair Display", Georgia, serif`;
+      let coupleFontSize = 58;
+      ctx.font = `600 ${coupleFontSize}px "Cormorant Garamond", Georgia, serif`;
       while (ctx.measureText(couple).width > 860 && coupleFontSize > 28) {
         coupleFontSize -= 2;
-        ctx.font = `bold ${coupleFontSize}px "Playfair Display", Georgia, serif`;
+        ctx.font = `600 ${coupleFontSize}px "Cormorant Garamond", Georgia, serif`;
       }
-      ctx.fillText(couple, width / 2, 388);
+      ctx.fillText(couple, width / 2, 375);
 
       // Baris 3: Tanggal Pernikahan
       ctx.fillStyle = '#C49A38';
-      ctx.font = '600 24px "Inter", sans-serif';
-      ctx.fillText(weddingInfo?.wedding_date || '', width / 2, 440);
+      ctx.font = '600 24px "Plus Jakarta Sans", "Inter", sans-serif';
+      ctx.fillText(weddingInfo?.wedding_date || '', width / 2, 425);
 
       // 6. Subheader Ajakan Scan
       ctx.fillStyle = '#2B3A28';
-      ctx.font = 'bold 36px "Playfair Display", Georgia, serif';
-      ctx.fillText('Abadikan & Bagikan Momen Anda', width / 2, 515);
+      ctx.font = '600 32px "Cormorant Garamond", Georgia, serif';
+      ctx.fillText('Abadikan & Bagikan Momen Anda', width / 2, 500);
 
       ctx.fillStyle = '#556353';
-      ctx.font = 'normal 22px "Inter", sans-serif';
-      ctx.fillText('Scan QR Code menggunakan kamera HP Anda', width / 2, 560);
+      ctx.font = 'normal 22px "Plus Jakarta Sans", "Inter", sans-serif';
+      ctx.fillText('Scan QR Code menggunakan kamera HP Anda', width / 2, 545);
 
       // 7. Kotak Frame QR Code
       const qrBoxSize = 580;
@@ -457,22 +449,39 @@ export default function QRCodeModal({ isOpen, onClose, weddingInfo }) {
                 {(() => {
                   const { prefix, couple } = parseWeddingTitle(weddingInfo?.title);
                   return (
-                    <div style={{ marginBottom: '0.8rem' }}>
-                      <div style={{ fontFamily: 'var(--font-serif)', fontStyle: 'italic', fontSize: '0.88rem', color: '#687765' }}>
+                    <div style={{ marginTop: '0.65rem', marginBottom: '0.85rem' }}>
+                      <div 
+                        style={{ 
+                          fontSize: '0.78rem',
+                          fontFamily: 'var(--font-serif)', 
+                          fontStyle: 'italic', 
+                          color: '#768772',
+                          letterSpacing: '0.06em',
+                          lineHeight: 1.2
+                        }}
+                      >
                         {prefix}
                       </div>
-                      <h4
+                      <div
                         style={{
                           fontFamily: 'var(--font-serif)',
-                          fontSize: '1.35rem',
-                          color: '#283625',
-                          margin: '0.15rem 0',
+                          fontSize: '1.45rem',
                           fontWeight: 600,
+                          color: '#283625',
+                          lineHeight: 1.25,
+                          margin: '2px 0',
                         }}
                       >
                         {couple}
-                      </h4>
-                      <div style={{ fontSize: '0.78rem', color: '#C49A38', fontWeight: 600 }}>
+                      </div>
+                      <div 
+                        style={{ 
+                          fontSize: '0.82rem', 
+                          color: '#C49A38', 
+                          fontWeight: 600,
+                          letterSpacing: '0.04em'
+                        }}
+                      >
                         {weddingInfo?.wedding_date || '27 September 2026'}
                       </div>
                     </div>
