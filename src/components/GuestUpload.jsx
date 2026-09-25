@@ -906,11 +906,23 @@ export default function GuestUpload({ onNavigateToGallery, weddingInfo: propWedd
               <div style={{ marginBottom: '1.6rem' }}>
                 <div 
                   style={{
-                    backgroundColor: '#2e4c25',
+                    backgroundColor: (weddingInfo.frame_theme === 'cream') 
+                      ? '#FAF8F4' 
+                      : (weddingInfo.frame_theme === 'royal_blue') 
+                        ? '#162746' 
+                        : '#2e4c25',
                     borderRadius: '14px',
-                    border: '1.5px solid rgba(46, 76, 37, 0.4)',
+                    border: (weddingInfo.frame_theme === 'cream') 
+                      ? '1.5px solid #d8e0d6' 
+                      : (weddingInfo.frame_theme === 'royal_blue') 
+                        ? '1.5px solid rgba(22, 39, 70, 0.4)' 
+                        : '1.5px solid rgba(46, 76, 37, 0.4)',
                     padding: '6px',
-                    boxShadow: '0 8px 24px rgba(46, 76, 37, 0.22)',
+                    boxShadow: (weddingInfo.frame_theme === 'cream')
+                      ? '0 8px 24px rgba(40, 54, 37, 0.1)'
+                      : (weddingInfo.frame_theme === 'royal_blue')
+                        ? '0 8px 24px rgba(22, 39, 70, 0.25)'
+                        : '0 8px 24px rgba(46, 76, 37, 0.22)',
                     position: 'relative',
                     overflow: 'hidden'
                   }}

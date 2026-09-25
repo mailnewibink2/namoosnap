@@ -16,7 +16,7 @@ import {
   QrCode as QrIcon
 } from 'lucide-react';
 
-import { getWeddingSettings, saveWeddingSettings } from '../utils/weddingSettings';
+import { getWeddingSettings, saveWeddingSettings, parseWeddingTitle } from '../utils/weddingSettings';
 import QRCodeModal from './QRCodeModal';
 
 export default function AdminModeration() {
@@ -28,8 +28,12 @@ export default function AdminModeration() {
   const [selectedPhoto, setSelectedPhoto] = useState(null);
   const [notification, setNotification] = useState({ text: '', type: '' });
   
-  // Pengaturan Nama Pengantin & Tanggal Acara
-  const [weddingInfo, setWeddingInfo] = useState({ title: 'The Wedding of Rahma & Febi', wedding_date: '27 September 2026' });
+  // Pengaturan Nama Pengantin, Tanggal Acara & Warna Background Frame
+  const [weddingInfo, setWeddingInfo] = useState({ 
+    title: 'The Wedding of Rahma & Febi', 
+    wedding_date: '27 September 2026',
+    frame_theme: 'green'
+  });
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [showQrModal, setShowQrModal] = useState(false);
   const [isSavingSettings, setIsSavingSettings] = useState(false);
@@ -790,27 +794,115 @@ export default function AdminModeration() {
                 />
               </div>
 
-              {/* Live Preview Box */}
-              <div 
-                style={{
-                  backgroundColor: '#ffffff',
-                  border: '1.5px dashed #9fb39e',
-                  borderRadius: '10px',
-                  padding: '1rem',
-                  textAlign: 'center',
-                  marginBottom: '1.4rem'
-                }}
-              >
-                <div style={{ fontSize: '0.72rem', color: '#C49A38', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
-                  Pratinjau Watermark Foto:
-                </div>
-                <div style={{ fontFamily: 'var(--font-serif)', fontSize: '1.2rem', fontWeight: 700, color: '#2B3A28', marginTop: '4px' }}>
-                  {weddingInfo.title || 'The Wedding of Rahma & Febi'}
-                </div>
-                <div style={{ fontSize: '0.78rem', color: '#6E7C6C', marginTop: '2px' }}>
-                  {weddingInfo.wedding_date || '27 September 2026'}
+              {/* Pilihan 3 Warna Background Frame */}
+              <div style={{ marginBottom: '1.4rem' }}>
+                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: '#2B3A28', marginBottom: '0.45rem' }}>
+                  Warna Background Frame Photobooth:
+                </label>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
+                  {[
+                    { id: 'green', name: 'Forest Green', hex: '#2e4c25', textColor: '#ffffff' },
+                    { id: 'cream', name: 'Classic Cream', hex: '#FAF8F4', textColor: '#283625', border: '1px solid #c7d2c4' },
+                    { id: 'royal_blue', name: 'Royal Blue', hex: '#162746', textColor: '#ffffff' },
+                  ].map((t) => {
+                    const isSelected = (weddingInfo.frame_theme || 'green') === t.id;
+                    return (
+                      <div
+                        key={t.id}
+                        onClick={() => setWeddingInfo({ ...weddingInfo, frame_theme: t.id })}
+                        style={{
+                          cursor: 'pointer',
+                          borderRadius: '10px',
+                          border: isSelected ? '2.5px solid #C49A38' : (t.border || '2px solid transparent'),
+                          padding: '10px 6px',
+                          backgroundColor: t.hex,
+                          color: t.textColor,
+                          textAlign: 'center',
+                          boxShadow: isSelected ? '0 4px 12px rgba(0,0,0,0.28)' : '0 1px 3px rgba(0,0,0,0.06)',
+                          transform: isSelected ? 'scale(1.03)' : 'scale(1)',
+                          transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
+                          position: 'relative',
+                        }}
+                      >
+                        {isSelected && (
+                          <div style={{
+                            position: 'absolute',
+                            top: '4px',
+                            right: '4px',
+                            backgroundColor: '#C49A38',
+                            borderRadius: '50%',
+                            width: '16px',
+                            height: '16px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            color: '#ffffff',
+                            fontSize: '10px',
+                            fontWeight: 'bold',
+                          }}>
+                            ✓
+                          </div>
+                        )}
+                        <div style={{
+                          width: '24px',
+                          height: '24px',
+                          borderRadius: '50%',
+                          backgroundColor: t.hex,
+                          border: t.id === 'cream' ? '1.5px solid #9fb39e' : '2px solid rgba(255,255,255,0.7)',
+                          margin: '0 auto 6px auto',
+                        }} />
+                        <div style={{ fontSize: '0.78rem', fontWeight: isSelected ? 700 : 600 }}>
+                          {t.name}
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
+
+              {/* Live Preview Box Menyesuaikan Warna Background & Teks Otomatis */}
+              {(() => {
+                const currentTheme = weddingInfo.frame_theme || 'green';
+                const isCream = currentTheme === 'cream';
+                const isBlue = currentTheme === 'royal_blue';
+                const previewBg = isCream ? '#FAF8F4' : isBlue ? '#162746' : '#2e4c25';
+                const prefixColor = isCream ? '#556353' : isBlue ? '#D6E3F8' : '#E8EFE5';
+                const coupleColor = isCream ? '#283625' : '#FFFFFF';
+                const dateColor = isCream ? '#C49A38' : isBlue ? '#E8D8A6' : '#F4EFE6';
+                const borderStyle = isCream ? '1.5px solid #d8e0d6' : '1.5px solid rgba(255,255,255,0.15)';
+                const tagColor = isCream ? '#C49A38' : '#FFDE7A';
+                const parsed = parseWeddingTitle(weddingInfo.title);
+
+                return (
+                  <div 
+                    style={{
+                      backgroundColor: previewBg,
+                      border: borderStyle,
+                      borderRadius: '12px',
+                      padding: '1.2rem 1rem',
+                      textAlign: 'center',
+                      marginBottom: '1.4rem',
+                      transition: 'all 0.3s ease',
+                      boxShadow: '0 4px 16px rgba(0, 0, 0, 0.12)',
+                      position: 'relative',
+                      overflow: 'hidden'
+                    }}
+                  >
+                    <div style={{ fontSize: '0.7rem', color: tagColor, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+                      Pratinjau Watermark ({isCream ? 'Classic Cream' : isBlue ? 'Royal Blue' : 'Forest Green'}):
+                    </div>
+                    <div style={{ fontSize: '0.8rem', color: prefixColor, marginTop: '8px', fontStyle: 'italic', fontFamily: 'var(--font-serif)' }}>
+                      {parsed.prefix || 'The Wedding of'}
+                    </div>
+                    <div style={{ fontFamily: '"Alex Brush", var(--font-serif)', fontSize: '1.75rem', color: coupleColor, margin: '2px 0' }}>
+                      {parsed.couple || 'Rahma & Febi'}
+                    </div>
+                    <div style={{ fontSize: '0.82rem', color: dateColor, fontWeight: 500 }}>
+                      {weddingInfo.wedding_date || '27 September 2026'}
+                    </div>
+                  </div>
+                );
+              })()}
 
               <div style={{ display: 'flex', gap: '0.6rem' }}>
                 <button

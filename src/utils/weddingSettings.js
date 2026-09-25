@@ -3,6 +3,7 @@ import { supabase, isSupabaseConfigured } from '../supabaseClient';
 const DEFAULT_SETTINGS = {
   title: 'The Wedding of Rahma & Febi',
   wedding_date: '27 September 2026',
+  frame_theme: 'green', // 'green' | 'cream' | 'royal_blue'
 };
 
 const LOCAL_STORAGE_KEY = 'namoo_wedding_settings';
@@ -30,13 +31,14 @@ export async function getWeddingSettings() {
     // 1. Coba ambil dari tabel wedding_settings
     const { data, error } = await supabase
       .from('wedding_settings')
-      .select('title, wedding_date')
+      .select('title, wedding_date, frame_theme')
       .eq('id', 'current')
       .single();
 
     if (!error && data) {
       let title = data.title || DEFAULT_SETTINGS.title;
       let weddingDate = data.wedding_date || DEFAULT_SETTINGS.wedding_date;
+      let frameTheme = data.frame_theme || DEFAULT_SETTINGS.frame_theme;
       if (title.includes('Sarah')) {
         title = DEFAULT_SETTINGS.title;
         weddingDate = DEFAULT_SETTINGS.wedding_date;
@@ -44,11 +46,12 @@ export async function getWeddingSettings() {
           id: 'current',
           title: DEFAULT_SETTINGS.title,
           wedding_date: DEFAULT_SETTINGS.wedding_date,
+          frame_theme: frameTheme,
           updated_at: new Date().toISOString()
         }).catch(() => {});
       }
 
-      const result = { title, wedding_date: weddingDate };
+      const result = { title, wedding_date: weddingDate, frame_theme: frameTheme };
       try {
         localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(result));
       } catch (e) {}
@@ -68,11 +71,12 @@ export async function getWeddingSettings() {
         const parsed = JSON.parse(configPhotos[0].message);
         let title = parsed.title || DEFAULT_SETTINGS.title;
         let weddingDate = parsed.wedding_date || DEFAULT_SETTINGS.wedding_date;
+        let frameTheme = parsed.frame_theme || DEFAULT_SETTINGS.frame_theme;
         if (title.includes('Sarah')) {
           title = DEFAULT_SETTINGS.title;
           weddingDate = DEFAULT_SETTINGS.wedding_date;
         }
-        const result = { title, wedding_date: weddingDate };
+        const result = { title, wedding_date: weddingDate, frame_theme: frameTheme };
         try {
           localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(result));
         } catch (e) {}
@@ -93,6 +97,7 @@ export async function saveWeddingSettings(newSettings) {
   const payload = {
     title: newSettings.title || DEFAULT_SETTINGS.title,
     wedding_date: newSettings.wedding_date || DEFAULT_SETTINGS.wedding_date,
+    frame_theme: newSettings.frame_theme || DEFAULT_SETTINGS.frame_theme || 'green',
   };
 
   try {
@@ -106,13 +111,25 @@ export async function saveWeddingSettings(newSettings) {
 
   // 1. Simpan ke tabel wedding_settings jika ada
   try {
-    await supabase
+    const { error: upsertErr } = await supabase
       .from('wedding_settings')
       .upsert({
         id: 'current',
         ...payload,
         updated_at: new Date().toISOString(),
       });
+
+    // Fallback jika kolom frame_theme belum ada di tabel Supabase
+    if (upsertErr && (upsertErr.message?.includes('frame_theme') || upsertErr.code === '42703')) {
+      await supabase
+        .from('wedding_settings')
+        .upsert({
+          id: 'current',
+          title: payload.title,
+          wedding_date: payload.wedding_date,
+          updated_at: new Date().toISOString(),
+        });
+    }
   } catch (err) {
     console.warn('DB upsert notice on wedding_settings:', err);
   }

@@ -56,9 +56,51 @@ function drawWrappedText(ctx, text, x, y, maxWidth, lineHeight, maxLines = 2) {
   });
 }
 
-function drawWavyBackgroundLines(ctx, width, height) {
+export const FRAME_THEMES = {
+  green: {
+    id: 'green',
+    name: 'Forest Green',
+    bg: '#2e4c25',
+    wavyColor: 'rgba(255, 255, 255, 0.055)',
+    photoBorder: 'rgba(0, 0, 0, 0.25)',
+    prefixColor: '#E8EFE5',
+    coupleColor: '#FFFFFF',
+    dateColor: '#F4EFE6',
+    messageColor: '#FFDE7A',
+    guestColor: '#FFFFFF',
+    brandingColor: 'rgba(255, 255, 255, 0.4)',
+  },
+  cream: {
+    id: 'cream',
+    name: 'Classic Cream',
+    bg: '#FAF8F4',
+    wavyColor: 'rgba(79, 99, 76, 0.08)',
+    photoBorder: 'rgba(43, 58, 40, 0.2)',
+    prefixColor: '#556353',
+    coupleColor: '#283625',
+    dateColor: '#C49A38',
+    messageColor: '#4A5847',
+    guestColor: '#283625',
+    brandingColor: 'rgba(43, 58, 40, 0.45)',
+  },
+  royal_blue: {
+    id: 'royal_blue',
+    name: 'Royal Blue',
+    bg: '#162746',
+    wavyColor: 'rgba(255, 255, 255, 0.06)',
+    photoBorder: 'rgba(0, 0, 0, 0.3)',
+    prefixColor: '#D6E3F8',
+    coupleColor: '#FFFFFF',
+    dateColor: '#E8D8A6',
+    messageColor: '#FFDE7A',
+    guestColor: '#FFFFFF',
+    brandingColor: 'rgba(255, 255, 255, 0.4)',
+  },
+};
+
+function drawWavyBackgroundLines(ctx, width, height, strokeColor = 'rgba(255, 255, 255, 0.055)') {
   ctx.save();
-  ctx.strokeStyle = 'rgba(255, 255, 255, 0.055)';
+  ctx.strokeStyle = strokeColor;
   ctx.lineWidth = 1.5;
 
   for (let x = 18; x < width; x += 36) {
@@ -81,10 +123,14 @@ export async function composePhotoboothImage({
   images,
   layout = '1',
   filter = 'normal',
-  weddingInfo = { title: 'The Wedding of Rahma & Febi', wedding_date: '27 September 2026' },
+  weddingInfo = { title: 'The Wedding of Rahma & Febi', wedding_date: '27 September 2026', frame_theme: 'green' },
   guestName = '',
   message = '',
+  theme = '',
 }) {
+  const selectedThemeKey = theme || weddingInfo?.frame_theme || 'green';
+  const activeTheme = FRAME_THEMES[selectedThemeKey] || FRAME_THEMES.green;
+
   const loadedImages = await Promise.all(
     images.map((src) => {
       return new Promise((resolve, reject) => {
@@ -163,12 +209,19 @@ export async function composePhotoboothImage({
   canvas.width = CANVAS_WIDTH;
   canvas.height = canvasHeight;
 
-  // 1. Gambar latar belakang hijau tua (#2e4c25)
-  ctx.fillStyle = '#2e4c25';
+  // 1. Gambar latar belakang frame sesuai tema aktif (green, cream, atau royal_blue)
+  ctx.fillStyle = activeTheme.bg;
   ctx.fillRect(0, 0, CANVAS_WIDTH, canvasHeight);
 
   // 2. Garis vertikal bergelombang halus (organik)
-  drawWavyBackgroundLines(ctx, CANVAS_WIDTH, canvasHeight);
+  drawWavyBackgroundLines(ctx, CANVAS_WIDTH, canvasHeight, activeTheme.wavyColor);
+
+  // Garis batas klasik elegan jika tema Cream
+  if (activeTheme.id === 'cream') {
+    ctx.strokeStyle = 'rgba(79, 99, 76, 0.18)';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(16, 16, CANVAS_WIDTH - 32, canvasHeight - 32);
+  }
 
   // 3. Gambar foto ke dalam slot (tepi lurus & sudut rounded bersih, tidak ada yang menutupi)
   slots.forEach((slot, index) => {
@@ -210,8 +263,8 @@ export async function composePhotoboothImage({
     ctx.restore();
 
     // Garis tepi halus pada foto
-    ctx.strokeStyle = 'rgba(0, 0, 0, 0.25)';
-    ctx.lineWidth = 1;
+    ctx.strokeStyle = activeTheme.photoBorder;
+    ctx.lineWidth = 1.2;
     ctx.beginPath();
     ctx.roundRect(slot.x, slot.y, slot.w, slot.h, radius);
     ctx.stroke();
@@ -227,7 +280,7 @@ export async function composePhotoboothImage({
     ctx.restore();
   }
 
-  // 5. Render Teks Footer Pernikahan
+  // 5. Render Teks Footer Pernikahan (Warna Otomatis Menyesuaikan Kontras Tema)
   const footerContentTop = photoBottomY + 22;
   const centerX = CANVAS_WIDTH / 2;
 
@@ -239,50 +292,50 @@ export async function composePhotoboothImage({
   const { prefix, couple } = parseWeddingTitle(weddingInfo.title);
 
   // Baris 1: "The Wedding of" (di bawah foto, di atas Rahma & Febi dengan jarak yang lega)
-  ctx.fillStyle = '#E8EFE5';
+  ctx.fillStyle = activeTheme.prefixColor;
   ctx.font = '500 19px "Cormorant Garamond", "Plus Jakarta Sans", sans-serif';
   ctx.fillText(prefix || 'The Wedding of', centerX, footerContentTop + 16);
 
   // Baris 2: Nama Pengantin ("Rahma & Febi" dengan font cursive kaligrafi elegan, tidak tertabrak)
-  ctx.fillStyle = '#FFFFFF';
+  ctx.fillStyle = activeTheme.coupleColor;
   ctx.font = 'normal 54px "Alex Brush", "Playfair Display", cursive, serif';
   ctx.fillText(couple, centerX, footerContentTop + 68);
 
   // Baris 3: Tanggal Pernikahan
-  ctx.fillStyle = '#F4EFE6';
+  ctx.fillStyle = activeTheme.dateColor;
   ctx.font = '500 20px "Cormorant Garamond", Georgia, serif';
   ctx.fillText(weddingInfo.wedding_date || '27 September 2026', centerX, footerContentTop + 114);
 
   if (cleanMessage) {
-    // Ucapan Tamu (Warna Emas Hangat #FFDE7A)
-    ctx.fillStyle = '#FFDE7A';
+    // Ucapan Tamu
+    ctx.fillStyle = activeTheme.messageColor;
     ctx.font = 'italic 22px "Playfair Display", Georgia, serif';
     drawWrappedText(ctx, `"${cleanMessage}"`, centerX, footerContentTop + 160, 780, 28, 2);
 
     // Nama Tamu
     if (cleanName) {
-      ctx.fillStyle = '#FFFFFF';
+      ctx.fillStyle = activeTheme.guestColor;
       ctx.font = '500 20px "Cormorant Garamond", "Plus Jakarta Sans", sans-serif';
       ctx.fillText(`-${cleanName}-`, centerX, footerContentTop + 204);
     }
   } else if (cleanName) {
     // Hanya Nama Tamu
-    ctx.fillStyle = '#FFDE7A';
+    ctx.fillStyle = activeTheme.messageColor;
     ctx.font = 'italic 21px "Playfair Display", Georgia, serif';
     ctx.fillText('Terima kasih atas doa & kehadirannya', centerX, footerContentTop + 158);
 
-    ctx.fillStyle = '#FFFFFF';
+    ctx.fillStyle = activeTheme.guestColor;
     ctx.font = '500 20px "Cormorant Garamond", "Plus Jakarta Sans", sans-serif';
     ctx.fillText(`-${cleanName}-`, centerX, footerContentTop + 196);
   } else {
     // State Default Sebelum Tamu Mengetik
-    ctx.fillStyle = '#FFDE7A';
+    ctx.fillStyle = activeTheme.messageColor;
     ctx.font = 'italic 20px "Playfair Display", Georgia, serif';
     ctx.fillText('Abadikan Momen Hangat & Penuh Kebahagiaan', centerX, footerContentTop + 160);
   }
 
   // Branding kecil Namoo Snap di paling bawah
-  ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+  ctx.fillStyle = activeTheme.brandingColor;
   ctx.font = '600 12px "Plus Jakarta Sans", sans-serif';
   ctx.fillText('NAMOO SNAP • DIGITAL PHOTOBOOTH', centerX, canvasHeight - 16);
 

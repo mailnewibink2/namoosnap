@@ -97,8 +97,11 @@ CREATE TABLE IF NOT EXISTS public.wedding_settings (
     id TEXT PRIMARY KEY DEFAULT 'current',
     title TEXT DEFAULT 'The Wedding of Rahma & Febi',
     wedding_date TEXT DEFAULT '27 September 2026',
+    frame_theme TEXT DEFAULT 'green',
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+ALTER TABLE public.wedding_settings ADD COLUMN IF NOT EXISTS frame_theme TEXT DEFAULT 'green';
 
 ALTER TABLE public.wedding_settings ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Public can read wedding_settings" ON public.wedding_settings;
@@ -114,8 +117,9 @@ ON public.wedding_settings FOR INSERT TO public WITH CHECK (true);
 CREATE POLICY "Public can update wedding_settings" 
 ON public.wedding_settings FOR UPDATE TO public USING (true) WITH CHECK (true);
 
-INSERT INTO public.wedding_settings (id, title, wedding_date)
-VALUES ('current', 'The Wedding of Rahma & Febi', '27 September 2026')
+INSERT INTO public.wedding_settings (id, title, wedding_date, frame_theme)
+VALUES ('current', 'The Wedding of Rahma & Febi', '27 September 2026', 'green')
 ON CONFLICT (id) DO UPDATE SET 
     title = EXCLUDED.title,
-    wedding_date = EXCLUDED.wedding_date;
+    wedding_date = EXCLUDED.wedding_date,
+    frame_theme = COALESCE(EXCLUDED.frame_theme, public.wedding_settings.frame_theme, 'green');
