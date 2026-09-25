@@ -13,7 +13,9 @@ import {
   CheckCheck,
   Filter,
   Image as ImageIcon,
-  QrCode as QrIcon
+  QrCode as QrIcon,
+  Palette,
+  Sparkles
 } from 'lucide-react';
 
 import { getWeddingSettings, saveWeddingSettings, parseWeddingTitle } from '../utils/weddingSettings';
@@ -42,7 +44,29 @@ export default function AdminModeration() {
     getWeddingSettings().then((res) => {
       if (res) setWeddingInfo(res);
     });
+
+    const handleSettingsChanged = (e) => {
+      if (e.detail) setWeddingInfo(e.detail);
+    };
+
+    window.addEventListener('namoo_wedding_settings_changed', handleSettingsChanged);
+    return () => window.removeEventListener('namoo_wedding_settings_changed', handleSettingsChanged);
   }, []);
+
+  const handleQuickThemeChange = async (newTheme) => {
+    const updated = { ...weddingInfo, frame_theme: newTheme };
+    setWeddingInfo(updated);
+    try {
+      await saveWeddingSettings(updated);
+      const name = 
+        newTheme === 'green' ? 'Forest Green (#2e4c25)' :
+        newTheme === 'cream' ? 'Classic Cream (#FAF8F4)' :
+        'Royal Blue (#162746)';
+      showToast(`🎨 Tema background frame diubah ke: ${name}!`);
+    } catch (err) {
+      showToast('Gagal mengubah tema: ' + err.message, 'error');
+    }
+  };
 
   const handleSaveSettings = async (e) => {
     e.preventDefault();
@@ -337,6 +361,154 @@ export default function AdminModeration() {
               Tayangkan Semua ({pendingCount})
             </button>
           )}
+        </div>
+      </div>
+
+      {/* Pilihan 3 Tema Warna Frame Photobooth Langsung di Halaman Moderasi */}
+      <div 
+        style={{
+          background: '#ffffff',
+          borderRadius: '14px',
+          border: '1.5px solid var(--color-cream-dark)',
+          boxShadow: 'var(--shadow-sm)',
+          padding: '1rem 1.4rem',
+          marginBottom: '1.6rem',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: '1rem'
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
+          <div style={{
+            width: '42px',
+            height: '42px',
+            borderRadius: '10px',
+            backgroundColor: '#FAF9F5',
+            border: '1px solid #d8e0d6',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: 'var(--color-sage-700)'
+          }}>
+            <Palette size={22} />
+          </div>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+              <span style={{ fontWeight: 700, fontSize: '0.98rem', color: 'var(--color-sage-800)' }}>
+                Warna Background Frame Tamu
+              </span>
+              <span style={{ 
+                fontSize: '0.72rem', 
+                fontWeight: 700, 
+                textTransform: 'uppercase', 
+                letterSpacing: '0.05em',
+                padding: '2px 8px', 
+                borderRadius: '12px', 
+                backgroundColor: '#E6ECE4', 
+                color: '#2B3A28' 
+              }}>
+                3 Pilihan Tema
+              </span>
+            </div>
+            <p style={{ margin: '2px 0 0 0', fontSize: '0.82rem', color: 'var(--color-charcoal-500)' }}>
+              Pilih warna frame foto polaroid tamu. Warna teks otomatis menyesuaikan agar kontras & terbaca jelas.
+            </p>
+          </div>
+        </div>
+
+        {/* 3 Tombol Pilihan Tema Warna */}
+        <div style={{ display: 'flex', gap: '0.65rem', alignItems: 'center', flexWrap: 'wrap' }}>
+          {/* 1. Forest Green */}
+          <button
+            type="button"
+            onClick={() => handleQuickThemeChange('green')}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.55rem',
+              padding: '0.6rem 1.05rem',
+              borderRadius: '9px',
+              backgroundColor: '#2e4c25',
+              color: '#ffffff',
+              border: (weddingInfo.frame_theme || 'green') === 'green' ? '2.5px solid #ffde7a' : '1.5px solid rgba(0,0,0,0.15)',
+              fontWeight: 600,
+              fontSize: '0.86rem',
+              cursor: 'pointer',
+              boxShadow: (weddingInfo.frame_theme || 'green') === 'green' ? '0 0 0 2px #2e4c25, 0 4px 12px rgba(46,76,37,0.4)' : '0 1px 3px rgba(0,0,0,0.08)',
+              transform: (weddingInfo.frame_theme || 'green') === 'green' ? 'scale(1.03)' : 'scale(1)',
+              transition: 'all 0.2s ease',
+            }}
+          >
+            <span style={{ width: '13px', height: '13px', borderRadius: '50%', backgroundColor: '#2e4c25', border: '2px solid #ffffff' }} />
+            <span>Hijau (#2e4c25)</span>
+            {(weddingInfo.frame_theme || 'green') === 'green' && (
+              <span style={{ backgroundColor: '#ffde7a', color: '#2e4c25', borderRadius: '50%', width: '18px', height: '18px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '11px' }}>
+                ✓
+              </span>
+            )}
+          </button>
+
+          {/* 2. Classic Cream */}
+          <button
+            type="button"
+            onClick={() => handleQuickThemeChange('cream')}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.55rem',
+              padding: '0.6rem 1.05rem',
+              borderRadius: '9px',
+              backgroundColor: '#FAF8F4',
+              color: '#283625',
+              border: weddingInfo.frame_theme === 'cream' ? '2.5px solid #C49A38' : '1.5px solid #c7d2c4',
+              fontWeight: 600,
+              fontSize: '0.86rem',
+              cursor: 'pointer',
+              boxShadow: weddingInfo.frame_theme === 'cream' ? '0 0 0 2px #C49A38, 0 4px 12px rgba(196,154,56,0.3)' : '0 1px 3px rgba(0,0,0,0.08)',
+              transform: weddingInfo.frame_theme === 'cream' ? 'scale(1.03)' : 'scale(1)',
+              transition: 'all 0.2s ease',
+            }}
+          >
+            <span style={{ width: '13px', height: '13px', borderRadius: '50%', backgroundColor: '#FAF8F4', border: '2px solid #283625' }} />
+            <span>Cream (#FAF8F4)</span>
+            {weddingInfo.frame_theme === 'cream' && (
+              <span style={{ backgroundColor: '#C49A38', color: '#ffffff', borderRadius: '50%', width: '18px', height: '18px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '11px' }}>
+                ✓
+              </span>
+            )}
+          </button>
+
+          {/* 3. Royal Blue */}
+          <button
+            type="button"
+            onClick={() => handleQuickThemeChange('royal_blue')}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.55rem',
+              padding: '0.6rem 1.05rem',
+              borderRadius: '9px',
+              backgroundColor: '#162746',
+              color: '#ffffff',
+              border: weddingInfo.frame_theme === 'royal_blue' ? '2.5px solid #60a5fa' : '1.5px solid rgba(0,0,0,0.15)',
+              fontWeight: 600,
+              fontSize: '0.86rem',
+              cursor: 'pointer',
+              boxShadow: weddingInfo.frame_theme === 'royal_blue' ? '0 0 0 2px #162746, 0 4px 12px rgba(22,39,70,0.45)' : '0 1px 3px rgba(0,0,0,0.08)',
+              transform: weddingInfo.frame_theme === 'royal_blue' ? 'scale(1.03)' : 'scale(1)',
+              transition: 'all 0.2s ease',
+            }}
+          >
+            <span style={{ width: '13px', height: '13px', borderRadius: '50%', backgroundColor: '#162746', border: '2px solid #ffffff' }} />
+            <span>Royal Blue (#162746)</span>
+            {weddingInfo.frame_theme === 'royal_blue' && (
+              <span style={{ backgroundColor: '#60a5fa', color: '#162746', borderRadius: '50%', width: '18px', height: '18px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '11px' }}>
+                ✓
+              </span>
+            )}
+          </button>
         </div>
       </div>
 
