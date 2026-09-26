@@ -95,8 +95,8 @@ USING (bucket_id = 'wedding-photos');
 -- 5. Tabel wedding_settings (Untuk Nama Pengantin & Tanggal yang diatur oleh Kru WO)
 CREATE TABLE IF NOT EXISTS public.wedding_settings (
     id TEXT PRIMARY KEY DEFAULT 'current',
-    title TEXT DEFAULT 'The Wedding of Rahma & Febi',
-    wedding_date TEXT DEFAULT '27 September 2026',
+    title TEXT DEFAULT 'The Wedding of Bride & Groom',
+    wedding_date TEXT DEFAULT '28 Oktober 2026',
     frame_theme TEXT DEFAULT 'green',
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -118,7 +118,7 @@ CREATE POLICY "Public can update wedding_settings"
 ON public.wedding_settings FOR UPDATE TO public USING (true) WITH CHECK (true);
 
 INSERT INTO public.wedding_settings (id, title, wedding_date, frame_theme)
-VALUES ('current', 'The Wedding of Rahma & Febi', '27 September 2026', 'green')
+VALUES ('current', 'The Wedding of Bride & Groom', '28 Oktober 2026', 'green')
 ON CONFLICT (id) DO UPDATE SET 
     title = EXCLUDED.title,
     wedding_date = EXCLUDED.wedding_date,

@@ -32,8 +32,8 @@ export default function AdminModeration() {
   
   // Pengaturan Nama Pengantin, Tanggal Acara & Warna Background Frame
   const [weddingInfo, setWeddingInfo] = useState({ 
-    title: 'The Wedding of Rahma & Febi', 
-    wedding_date: '27 September 2026',
+    title: 'The Wedding of Bride & Groom', 
+    wedding_date: '28 Oktober 2026',
     frame_theme: 'green'
   });
   const [showSettingsModal, setShowSettingsModal] = useState(false);
@@ -924,7 +924,7 @@ export default function AdminModeration() {
                 </label>
                 <input 
                   type="text"
-                  placeholder="Contoh: The Wedding of Rahma & Febi"
+                  placeholder="Contoh: The Wedding of Bride & Groom"
                   value={weddingInfo.title}
                   onChange={(e) => setWeddingInfo({ ...weddingInfo, title: e.target.value })}
                   required
@@ -948,7 +948,7 @@ export default function AdminModeration() {
                 </label>
                 <input 
                   type="text"
-                  placeholder="Contoh: 27 September 2026"
+                  placeholder="Contoh: 28 Oktober 2026"
                   value={weddingInfo.wedding_date}
                   onChange={(e) => setWeddingInfo({ ...weddingInfo, wedding_date: e.target.value })}
                   required
@@ -1067,10 +1067,10 @@ export default function AdminModeration() {
                       {parsed.prefix || 'The Wedding of'}
                     </div>
                     <div style={{ fontFamily: '"Alex Brush", var(--font-serif)', fontSize: '1.75rem', color: coupleColor, margin: '2px 0' }}>
-                      {parsed.couple || 'Rahma & Febi'}
+                      {parsed.couple || 'Bride & Groom'}
                     </div>
                     <div style={{ fontSize: '0.82rem', color: dateColor, fontWeight: 500 }}>
-                      {weddingInfo.wedding_date || '27 September 2026'}
+                      {weddingInfo.wedding_date || '28 Oktober 2026'}
                     </div>
                   </div>
                 );

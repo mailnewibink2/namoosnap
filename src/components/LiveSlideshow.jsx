@@ -27,8 +27,8 @@ export default function LiveSlideshow() {
   const [newPhotoAlert, setNewPhotoAlert] = useState(null);
   const [showQrModal, setShowQrModal] = useState(false);
   const [weddingInfo, setWeddingInfo] = useState({ 
-    title: 'The Wedding of Rahma & Febi', 
-    wedding_date: '27 September 2026' 
+    title: 'The Wedding of Bride & Groom', 
+    wedding_date: '28 Oktober 2026' 
   });
 
   const containerRef = useRef(null);

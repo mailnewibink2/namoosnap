@@ -1,8 +1,8 @@
 import { supabase, isSupabaseConfigured } from '../supabaseClient';
 
 const DEFAULT_SETTINGS = {
-  title: 'The Wedding of Rahma & Febi',
-  wedding_date: '27 September 2026',
+  title: 'The Wedding of Bride & Groom',
+  wedding_date: '28 Oktober 2026',
   frame_theme: 'green', // 'green' | 'cream' | 'royal_blue'
 };
 
@@ -14,11 +14,6 @@ export async function getWeddingSettings() {
   try {
     const raw = localStorage.getItem(LOCAL_STORAGE_KEY);
     if (raw) cached = JSON.parse(raw);
-    // Jika masih data contoh lama Sarah & Dimas, hapus dan ganti ke Rahma & Febi
-    if (cached && (cached.title?.includes('Sarah') || cached.wedding_date?.includes('24 September 2026'))) {
-      cached = null;
-      localStorage.removeItem(LOCAL_STORAGE_KEY);
-    }
   } catch (e) {
     console.warn('LocalStorage read error:', e);
   }
@@ -39,17 +34,6 @@ export async function getWeddingSettings() {
       let title = data.title || DEFAULT_SETTINGS.title;
       let weddingDate = data.wedding_date || DEFAULT_SETTINGS.wedding_date;
       let frameTheme = data.frame_theme || DEFAULT_SETTINGS.frame_theme;
-      if (title.includes('Sarah')) {
-        title = DEFAULT_SETTINGS.title;
-        weddingDate = DEFAULT_SETTINGS.wedding_date;
-        supabase.from('wedding_settings').upsert({
-          id: 'current',
-          title: DEFAULT_SETTINGS.title,
-          wedding_date: DEFAULT_SETTINGS.wedding_date,
-          frame_theme: frameTheme,
-          updated_at: new Date().toISOString()
-        }).catch(() => {});
-      }
 
       const result = { title, wedding_date: weddingDate, frame_theme: frameTheme };
       try {
@@ -163,7 +147,7 @@ export async function saveWeddingSettings(newSettings) {
 }
 
 export function parseWeddingTitle(title) {
-  if (!title) return { prefix: 'The Wedding of', couple: 'Rahma & Febi' };
+  if (!title) return { prefix: 'The Wedding of', couple: 'Bride & Groom' };
   const str = title.trim();
   const lower = str.toLowerCase();
 

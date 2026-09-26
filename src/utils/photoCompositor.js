@@ -123,7 +123,7 @@ export async function composePhotoboothImage({
   images,
   layout = '1',
   filter = 'normal',
-  weddingInfo = { title: 'The Wedding of Rahma & Febi', wedding_date: '27 September 2026', frame_theme: 'green' },
+  weddingInfo = { title: 'The Wedding of Bride & Groom', wedding_date: '28 Oktober 2026', frame_theme: 'green' },
   guestName = '',
   message = '',
   theme = '',
@@ -291,20 +291,20 @@ export async function composePhotoboothImage({
   const cleanMessage = message.trim();
   const { prefix, couple } = parseWeddingTitle(weddingInfo.title);
 
-  // Baris 1: "The Wedding of" (di bawah foto, di atas Rahma & Febi dengan jarak yang lega)
+  // Baris 1: "The Wedding of" (di bawah foto, di atas nama pengantin dengan jarak yang lega)
   ctx.fillStyle = activeTheme.prefixColor;
   ctx.font = '500 19px "Cormorant Garamond", "Plus Jakarta Sans", sans-serif';
   ctx.fillText(prefix || 'The Wedding of', centerX, footerContentTop + 16);
 
-  // Baris 2: Nama Pengantin ("Rahma & Febi" dengan font cursive kaligrafi elegan, tidak tertabrak)
+  // Baris 2: Nama Pengantin ("Bride & Groom" dengan font cursive kaligrafi elegan, tidak tertabrak)
   ctx.fillStyle = activeTheme.coupleColor;
   ctx.font = 'normal 54px "Alex Brush", "Playfair Display", cursive, serif';
-  ctx.fillText(couple, centerX, footerContentTop + 68);
+  ctx.fillText(couple || 'Bride & Groom', centerX, footerContentTop + 68);
 
   // Baris 3: Tanggal Pernikahan
   ctx.fillStyle = activeTheme.dateColor;
   ctx.font = '500 20px "Cormorant Garamond", Georgia, serif';
-  ctx.fillText(weddingInfo.wedding_date || '27 September 2026', centerX, footerContentTop + 114);
+  ctx.fillText(weddingInfo.wedding_date || '28 Oktober 2026', centerX, footerContentTop + 114);
 
   if (cleanMessage) {
     // Ucapan Tamu

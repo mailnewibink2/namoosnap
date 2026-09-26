@@ -35,8 +35,8 @@ export default function GuestUpload({ onNavigateToGallery, weddingInfo: propWedd
   // Wedding Settings (Judul & Tanggal)
   const [weddingInfo, setWeddingInfo] = useState(() => {
     return propWeddingInfo || {
-      title: 'The Wedding of Rahma & Febi',
-      wedding_date: '27 September 2026',
+      title: 'The Wedding of Bride & Groom',
+      wedding_date: '28 Oktober 2026',
     };
   });
 
